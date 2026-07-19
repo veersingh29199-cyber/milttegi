@@ -121,3 +121,9 @@ export function initStore(): void {
     writeJson(STORAGE_KEYS.schemaVersion, SCHEMA_VERSION)
   }
 }
+
+// 앱의 모든 저장 데이터를 지운다(설정 '전체 삭제'용).
+// 되돌릴 수 없으므로 화면에서 2단계 확인을 거친 뒤에만 호출한다.
+export function clearAll(): void {
+  for (const key of Object.values(STORAGE_KEYS)) localStorage.removeItem(key)
+}
