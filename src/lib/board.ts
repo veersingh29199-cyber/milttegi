@@ -1,5 +1,13 @@
-import type { Settings, Trip } from '../types/models'
-import { splitSessions, netFare, turnGapMin, businessWeekday } from './calc'
+import type { DailyExpenses, Settings, Trip } from '../types/models'
+import {
+  splitSessions,
+  netFare,
+  turnGapMin,
+  businessWeekday,
+  businessDay,
+  sessionDurationMin,
+} from './calc'
+import { districtName } from '../data/regions'
 
 // 작전판 집계 전용 순수 함수 모음. UI와 분리해 단위 테스트로 정확성을 고정한다.
 
@@ -192,4 +200,139 @@ export function fineGrid(derived: TripDerived[]): FineGrid {
 export function adaptiveGrid(trips: Trip[], settings: Settings): CoarseGrid | FineGrid {
   const derived = deriveTrips(trips, settings)
   return shouldRefine(derived) ? fineGrid(derived) : coarseGrid(derived)
+}
+
+// --- 위젯 ②: 플랫폼 비교 ---
+export interface PlatformStat {
+  id: string
+  name: string
+  count: number
+  avgFare: number // 평균 표시 요금
+  netSum: number // 실수령 합
+  avgNet: number // 평균 실수령
+}
+
+// 플랫폼별 건수·평균 요금·실수령을 집계한다(건수 많은 순).
+export function platformCompare(trips: Trip[], settings: Settings): PlatformStat[] {
+  return settings.platforms
+    .map((p) => {
+      const list = trips.filter((t) => t.platformId === p.id)
+      const fareSum = list.reduce((s, t) => s + t.fare, 0)
+      const netSum = list.reduce((s, t) => s + netFare(t.fare, p.feeRate), 0)
+      const count = list.length
+      return {
+        id: p.id,
+        name: p.name,
+        count,
+        avgFare: count ? Math.round(fareSum / count) : 0,
+        netSum,
+        avgNet: count ? Math.round(netSum / count) : 0,
+      }
+    })
+    .sort((a, b) => b.count - a.count)
+}
+
+// --- 위젯 ③: 도착지 랭킹(연결·막콜) ---
+export interface DestStat {
+  code: string
+  name: string
+  count: number
+  avgGapMin: number | null // 도착 후 다음 콜까지 평균(회전 빠름=연결 좋음). 막콜만이면 null
+  lastCallRate: number // 막콜 비율(0~1). 높으면 복귀 곤란 신호
+}
+
+// 도착지별 회전(연결)과 막콜 비율을 집계한다.
+export function destinationRanking(trips: Trip[], settings: Settings): DestStat[] {
+  const derived = deriveTrips(trips, settings)
+  const byDest: Record<string, TripDerived[]> = {}
+  for (const d of derived) (byDest[d.trip.to] ??= []).push(d)
+
+  return Object.entries(byDest)
+    .map(([code, list]) => {
+      const gaps = list.filter((d) => d.gapMin !== null).map((d) => d.gapMin as number)
+      const lastCalls = list.filter((d) => d.gapMin === null).length
+      return {
+        code,
+        name: districtName(code),
+        count: list.length,
+        avgGapMin: gaps.length ? Math.round(gaps.reduce((s, g) => s + g, 0) / gaps.length) : null,
+        lastCallRate: lastCalls / list.length,
+      }
+    })
+    .sort((a, b) => b.count - a.count)
+}
+
+// --- 위젯 ④: 주간 요약(최근 N영업일) ---
+export interface WeeklySummary {
+  fromDay: string // 집계 시작 영업일
+  toDay: string // 집계 끝 영업일(오늘)
+  tripCount: number
+  netSum: number // 실수령 합
+  expenseSum: number // 경비 합
+  profit: number // 순수익 = 실수령 − 경비
+  workedHours: number | null // 근무 시간(1건짜리 세션 제외)
+  hourlyNet: number | null // 시간당 실수령
+  minHourly: number
+  vsMinHourly: number | null // 시간당 − 최소 시급(양수면 목표 달성)
+}
+
+// 최근 n영업일의 날짜 문자열 집합을 만든다(오늘 영업일 포함).
+function lastNBusinessDays(nowISO: string, n: number): Set<string> {
+  const base = businessDay(nowISO)
+  const [y, m, d] = base.split('-').map(Number)
+  const set = new Set<string>()
+  const pad = (x: number) => String(x).padStart(2, '0')
+  for (let i = 0; i < n; i++) {
+    const dt = new Date(y, m - 1, d - i)
+    set.add(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`)
+  }
+  return set
+}
+
+// 주간(최근 n영업일, 기본 7) 실수령·순수익·시급을 집계한다.
+export function weeklySummary(
+  trips: Trip[],
+  expenses: DailyExpenses,
+  settings: Settings,
+  nowISO: string,
+  days = 7,
+): WeeklySummary {
+  const daySet = lastNBusinessDays(nowISO, days)
+  const inRange = trips.filter((t) => daySet.has(businessDay(t.at)))
+
+  const netSum = inRange.reduce(
+    (s, t) => s + netFare(t.fare, settings.platforms.find((p) => p.id === t.platformId)?.feeRate ?? 0),
+    0,
+  )
+  const expenseSum = [...daySet].reduce((s, day) => s + (expenses[day] ?? 0), 0)
+
+  // 시간당: 2건 이상 세션만(1건짜리는 근무시간 0이라 제외).
+  const sessions = splitSessions(inRange, settings.sessionGapMin)
+  let workedMin = 0
+  let netForHourly = 0
+  for (const session of sessions) {
+    if (session.trips.length < 2) continue
+    workedMin += sessionDurationMin(session)
+    netForHourly += session.trips.reduce(
+      (s, t) =>
+        s + netFare(t.fare, settings.platforms.find((p) => p.id === t.platformId)?.feeRate ?? 0),
+      0,
+    )
+  }
+  const workedHours = workedMin > 0 ? workedMin / 60 : null
+  const hourlyNet = workedHours ? Math.round(netForHourly / workedHours) : null
+
+  const sortedDays = [...daySet].sort()
+  return {
+    fromDay: sortedDays[0],
+    toDay: sortedDays[sortedDays.length - 1],
+    tripCount: inRange.length,
+    netSum,
+    expenseSum,
+    profit: netSum - expenseSum,
+    workedHours,
+    hourlyNet,
+    minHourly: settings.minHourly,
+    vsMinHourly: hourlyNet === null ? null : hourlyNet - settings.minHourly,
+  }
 }

@@ -8,9 +8,12 @@ import {
   aggregateCell,
   coarseGrid,
   shouldRefine,
+  platformCompare,
+  destinationRanking,
+  weeklySummary,
 } from './board'
 import { DEFAULT_SETTINGS } from '../storage/store'
-import type { Trip } from '../types/models'
+import type { Trip, DailyExpenses } from '../types/models'
 
 function trip(id: string, at: string, extra: Partial<Trip> = {}): Trip {
   return {
@@ -120,5 +123,67 @@ describe('coarseGrid / shouldRefine', () => {
   it('데이터가 얇으면 세분화하지 않는다', () => {
     const trips = [trip('a', '2026-07-20T20:00:00'), trip('b', '2026-07-20T21:00:00')]
     expect(shouldRefine(deriveTrips(trips, DEFAULT_SETTINGS))).toBe(false)
+  })
+})
+
+describe('platformCompare — 위젯② 플랫폼 비교', () => {
+  it('플랫폼별 건수·평균요금·실수령을 집계한다', () => {
+    const trips = [
+      trip('a', '2026-07-20T20:00:00', { platformId: 'kakao', fare: 10000 }),
+      trip('b', '2026-07-20T21:00:00', { platformId: 'kakao', fare: 20000 }),
+      trip('c', '2026-07-20T22:00:00', { platformId: 'tmap', fare: 15000 }),
+    ]
+    const stats = platformCompare(trips, DEFAULT_SETTINGS)
+    const kakao = stats.find((s) => s.id === 'kakao')!
+    expect(kakao.count).toBe(2)
+    expect(kakao.avgFare).toBe(15000) // (10000+20000)/2
+    expect(kakao.netSum).toBe(24000) // (8000+16000)
+    expect(kakao.avgNet).toBe(12000)
+    // 건수 많은 순 정렬
+    expect(stats[0].id).toBe('kakao')
+  })
+})
+
+describe('destinationRanking — 위젯③ 도착지 랭킹', () => {
+  it('도착지별 회전(연결)과 막콜 비율을 집계한다', () => {
+    // 동래(26260) 도착 2건: 하나는 뒤에 콜 이어짐, 하나는 세션 마지막(막콜)
+    const trips = [
+      trip('a', '2026-07-20T20:00:00', { to: '26260' }), // →b 이어짐(gap 40)
+      trip('b', '2026-07-20T20:40:00', { to: '26530' }), // 막콜(다음은 3시간 뒤)
+      trip('c', '2026-07-20T23:50:00', { to: '26260' }), // 막콜(세션 끝)
+    ]
+    const ranking = destinationRanking(trips, DEFAULT_SETTINGS)
+    const dongrae = ranking.find((d) => d.code === '26260')!
+    expect(dongrae.count).toBe(2)
+    expect(dongrae.avgGapMin).toBe(40) // a만 회전 데이터 있음
+    expect(dongrae.lastCallRate).toBe(0.5) // 2건 중 c가 막콜
+  })
+})
+
+describe('weeklySummary — 위젯④ 주간 요약', () => {
+  it('실수령·경비·순수익·시간당을 집계한다', () => {
+    // 오늘 영업일 기준 같은 날 세션 2건(20:00, 21:00 = 60분 근무)
+    const trips = [
+      trip('a', '2026-07-20T20:00:00', { fare: 10000 }),
+      trip('b', '2026-07-20T21:00:00', { fare: 10000 }),
+    ]
+    const expenses: DailyExpenses = { '2026-07-20': 5000 }
+    const s = weeklySummary(trips, expenses, DEFAULT_SETTINGS, '2026-07-20T23:00:00', 7)
+    expect(s.tripCount).toBe(2)
+    expect(s.netSum).toBe(16000) // 8000 + 8000
+    expect(s.expenseSum).toBe(5000)
+    expect(s.profit).toBe(11000)
+    expect(s.workedHours).toBe(1) // 20:00~21:00
+    expect(s.hourlyNet).toBe(16000) // 16000 / 1시간
+    expect(s.vsMinHourly).toBe(1000) // 16000 − 15000
+  })
+  it('범위 밖 날짜는 제외한다', () => {
+    const trips = [
+      trip('old', '2026-07-01T20:00:00', { fare: 99000 }), // 7일보다 이전
+      trip('new', '2026-07-20T20:00:00', { fare: 10000 }),
+    ]
+    const s = weeklySummary(trips, {}, DEFAULT_SETTINGS, '2026-07-20T23:00:00', 7)
+    expect(s.tripCount).toBe(1)
+    expect(s.netSum).toBe(8000)
   })
 })

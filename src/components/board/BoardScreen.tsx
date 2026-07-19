@@ -2,10 +2,14 @@ import { useMemo, useState } from 'react'
 import { useTrips } from '../../hooks/useTrips'
 import { useSettings } from '../../hooks/useSettings'
 import { nowLocalISO } from '../../lib/time'
+import { getDailyExpenses } from '../../storage/store'
 import {
   autoMode,
   filterByMode,
   adaptiveGrid,
+  platformCompare,
+  destinationRanking,
+  weeklySummary,
   BUCKET_LABEL,
   MIN_SAMPLE,
   MODE_LABEL,
@@ -14,6 +18,7 @@ import {
   type CoarseGrid,
   type FineGrid,
 } from '../../lib/board'
+import { PlatformWidget, DestinationWidget, WeeklyWidget } from './widgets'
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토']
 const UNLOCK_AT = 10 // 이 건수부터 작전판이 열린다
@@ -28,9 +33,15 @@ export function BoardScreen() {
   const auto = autoMode(nowLocalISO())
   const mode = override ?? auto
 
-  const grid = useMemo(
-    () => adaptiveGrid(filterByMode(trips, mode), settings),
-    [trips, mode, settings],
+  // 모드 필터된 기록(표·플랫폼·도착지 위젯 공용).
+  const filtered = useMemo(() => filterByMode(trips, mode), [trips, mode])
+  const grid = useMemo(() => adaptiveGrid(filtered, settings), [filtered, settings])
+  const platforms = useMemo(() => platformCompare(filtered, settings), [filtered, settings])
+  const dests = useMemo(() => destinationRanking(filtered, settings), [filtered, settings])
+  // 주간 요약은 경비 차감 순수익이라 모드 무관 전체 기준.
+  const weekly = useMemo(
+    () => weeklySummary(trips, getDailyExpenses(), settings, nowLocalISO()),
+    [trips, settings],
   )
 
   // 잠금: 전체 기록이 기준 미만이면 안내만.
@@ -90,6 +101,11 @@ export function BoardScreen() {
         칸: 위=시간당 실수령(원/시), 가운데=평균 회전(분), 아래=건수. 표본 {MIN_SAMPLE}건 미만은
         회색.
       </p>
+
+      {/* 위젯 ②③④ */}
+      <PlatformWidget stats={platforms} />
+      <DestinationWidget stats={dests} />
+      <WeeklyWidget summary={weekly} />
     </div>
   )
 }
