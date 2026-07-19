@@ -10,6 +10,9 @@ import {
   platformCompare,
   destinationRanking,
   weeklySummary,
+  gangseoVsDongrae,
+  avoidancePremium,
+  zoneExitBreakeven,
   BUCKET_LABEL,
   MIN_SAMPLE,
   MODE_LABEL,
@@ -19,6 +22,7 @@ import {
   type FineGrid,
 } from '../../lib/board'
 import { PlatformWidget, DestinationWidget, WeeklyWidget } from './widgets'
+import { Reports } from './reports'
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토']
 const UNLOCK_AT = 10 // 이 건수부터 작전판이 열린다
@@ -43,6 +47,10 @@ export function BoardScreen() {
     () => weeklySummary(trips, getDailyExpenses(), settings, nowLocalISO()),
     [trips, settings],
   )
+  // 전용 리포트도 모드 무관 전체 기록 기준(자체적으로 강서/동래·중심/외곽을 가름).
+  const reportA = useMemo(() => gangseoVsDongrae(trips, settings), [trips, settings])
+  const reportB = useMemo(() => avoidancePremium(trips, settings), [trips, settings])
+  const reportC = useMemo(() => zoneExitBreakeven(trips, settings), [trips, settings])
 
   // 잠금: 전체 기록이 기준 미만이면 안내만.
   if (trips.length < UNLOCK_AT) {
@@ -106,6 +114,9 @@ export function BoardScreen() {
       <PlatformWidget stats={platforms} />
       <DestinationWidget stats={dests} />
       <WeeklyWidget summary={weekly} />
+
+      {/* 전용 리포트 ⓐⓑⓒ */}
+      <Reports aReport={reportA} bReport={reportB} cReport={reportC} />
     </div>
   )
 }

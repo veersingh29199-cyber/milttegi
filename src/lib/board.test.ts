@@ -11,6 +11,10 @@ import {
   platformCompare,
   destinationRanking,
   weeklySummary,
+  zoneKind,
+  gangseoVsDongrae,
+  avoidancePremium,
+  zoneExitBreakeven,
 } from './board'
 import { DEFAULT_SETTINGS } from '../storage/store'
 import type { Trip, DailyExpenses } from '../types/models'
@@ -185,5 +189,65 @@ describe('weeklySummary — 위젯④ 주간 요약', () => {
     const s = weeklySummary(trips, {}, DEFAULT_SETTINGS, '2026-07-20T23:00:00', 7)
     expect(s.tripCount).toBe(1)
     expect(s.netSum).toBe(8000)
+  })
+})
+
+describe('zoneKind — 내 구역 중심/외곽 분류', () => {
+  it('라벨로 중심/외곽을 가른다', () => {
+    // 기본 프리셋: zone-myeongji-center='명지 중심', zone-myeongji-outer='명지 외곽'
+    expect(zoneKind('zone-myeongji-center', DEFAULT_SETTINGS)).toBe('center')
+    expect(zoneKind('zone-myeongji-outer', DEFAULT_SETTINGS)).toBe('outer')
+    expect(zoneKind('zone-sinho', DEFAULT_SETTINGS)).toBeNull() // 신호단지=분류 불가
+    expect(zoneKind(undefined, DEFAULT_SETTINGS)).toBeNull()
+  })
+})
+
+describe('리포트 ⓐ 평일 강서 vs 주말 동래', () => {
+  it('표본이 부족하면 ready=false', () => {
+    const r = gangseoVsDongrae([trip('a', '2026-07-20T20:00:00')], DEFAULT_SETTINGS)
+    expect(r.ready).toBe(false)
+  })
+  it('두 코호트를 각각 시간당 실수령으로 집계한다', () => {
+    const trips = [
+      // 평일(월) 강서 3건
+      trip('g1', '2026-07-20T20:00:00', { from: '26440' }),
+      trip('g2', '2026-07-20T21:00:00', { from: '26440' }),
+      trip('g3', '2026-07-20T22:00:00', { from: '26440' }),
+      // 주말(일) 동래 3건
+      trip('d1', '2026-07-19T20:00:00', { from: '26260' }),
+      trip('d2', '2026-07-19T21:00:00', { from: '26260' }),
+      trip('d3', '2026-07-19T22:00:00', { from: '26260' }),
+    ]
+    const r = gangseoVsDongrae(trips, DEFAULT_SETTINGS)
+    expect(r.ready).toBe(true)
+    expect(r.weekdayGangseo.count).toBe(3)
+    expect(r.weekendDongrae.count).toBe(3)
+    // 각 코호트 60분 간격 × net 8000 → 8000원/시
+    expect(r.weekdayGangseo.hourlyNet).toBe(8000)
+  })
+})
+
+describe('리포트 ⓒ 구역 이탈 손익분기', () => {
+  it('강서→강서(구역 내) vs 강서→밖(이탈)을 가른다', () => {
+    const trips = [
+      trip('in1', '2026-07-20T20:00:00', { from: '26440', to: '26440' }),
+      trip('out1', '2026-07-20T20:40:00', { from: '26440', to: '26260' }),
+      trip('in2', '2026-07-20T21:20:00', { from: '26440', to: '26440' }),
+    ]
+    const r = zoneExitBreakeven(trips, DEFAULT_SETTINGS)
+    expect(r.inside.count).toBe(2)
+    expect(r.exit.count).toBe(1)
+  })
+})
+
+describe('리포트 ⓑ 기피 프리미엄', () => {
+  it('중심/외곽 도착 콜의 단가를 비교한다', () => {
+    const trips = [
+      trip('c1', '2026-07-20T20:00:00', { toZone: 'zone-myeongji-center', fare: 10000 }),
+      trip('o1', '2026-07-20T20:40:00', { toZone: 'zone-myeongji-outer', fare: 20000 }),
+    ]
+    const r = avoidancePremium(trips, DEFAULT_SETTINGS)
+    expect(r.center.avgFare).toBe(10000)
+    expect(r.outer.avgFare).toBe(20000) // 외곽이 단가 높음(기피 프리미엄)
   })
 })

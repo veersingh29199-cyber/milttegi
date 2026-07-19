@@ -336,3 +336,101 @@ export function weeklySummary(
     vsMinHourly: hourlyNet === null ? null : hourlyNet - settings.minHourly,
   }
 }
+
+// --- 전용 리포트(4-C) ---
+
+// 리포트가 활성화되려면 각 코호트에 최소 이만큼의 표본이 필요하다.
+export const REPORT_MIN = 3
+
+// 코호트(비교 대상 묶음) 통계.
+export interface CohortStat {
+  count: number
+  hourlyNet: number | null // 시간당 실수령(회전 데이터 기반)
+  avgGapMin: number | null // 평균 회전 간격
+  avgFare: number // 평균 표시 요금(단가)
+  avgNet: number // 평균 실수령
+}
+
+// 파생 기록 묶음의 코호트 통계. aggregateCell을 재사용하고 단가 평균을 더한다.
+export function cohortStat(items: TripDerived[]): CohortStat {
+  const cell = aggregateCell(items)
+  const count = items.length
+  const fareSum = items.reduce((s, d) => s + d.trip.fare, 0)
+  const netSum = items.reduce((s, d) => s + d.net, 0)
+  return {
+    count,
+    hourlyNet: cell.hourlyNet,
+    avgGapMin: cell.avgGapMin,
+    avgFare: count ? Math.round(fareSum / count) : 0,
+    avgNet: count ? Math.round(netSum / count) : 0,
+  }
+}
+
+// ⓐ 평일 강서 vs 주말 동래 — 시간당 실수령 비교.
+export interface GangseoVsDongrae {
+  weekdayGangseo: CohortStat
+  weekendDongrae: CohortStat
+  ready: boolean // 두 코호트 모두 표본 충족 시 true
+}
+export function gangseoVsDongrae(trips: Trip[], settings: Settings): GangseoVsDongrae {
+  const d = deriveTrips(trips, settings)
+  const wg = cohortStat(
+    d.filter((x) => dayGroup(x.trip.at) === 'weekday' && x.trip.from === MODE_DISTRICT.gangseo),
+  )
+  const wd = cohortStat(
+    d.filter((x) => dayGroup(x.trip.at) === 'weekend' && x.trip.from === MODE_DISTRICT.dongrae),
+  )
+  return {
+    weekdayGangseo: wg,
+    weekendDongrae: wd,
+    ready: wg.count >= REPORT_MIN && wd.count >= REPORT_MIN,
+  }
+}
+
+// 내 구역 라벨을 중심/외곽으로 분류한다('명지 중심'→center, '명지 외곽'→outer, 그 외 null).
+export type ZoneKind = 'center' | 'outer' | null
+export function zoneKind(zoneId: string | undefined, settings: Settings): ZoneKind {
+  if (!zoneId) return null
+  const name = settings.customZones.find((z) => z.id === zoneId)?.name ?? ''
+  if (name.includes('외곽')) return 'outer'
+  if (name.includes('중심')) return 'center'
+  return null
+}
+
+// ⓑ 기피 프리미엄 — 내 구역 중심 vs 외곽의 단가·회전 비교.
+// 도착 구역(toZone)의 성격을 우선하고, 없으면 출발 구역(fromZone)으로 분류한다.
+export interface AvoidancePremium {
+  center: CohortStat
+  outer: CohortStat
+  ready: boolean
+}
+export function avoidancePremium(trips: Trip[], settings: Settings): AvoidancePremium {
+  const d = deriveTrips(trips, settings)
+  const kindOf = (t: Trip) => zoneKind(t.toZone, settings) ?? zoneKind(t.fromZone, settings)
+  const center = cohortStat(d.filter((x) => kindOf(x.trip) === 'center'))
+  const outer = cohortStat(d.filter((x) => kindOf(x.trip) === 'outer'))
+  return {
+    center,
+    outer,
+    ready: center.count >= REPORT_MIN && outer.count >= REPORT_MIN,
+  }
+}
+
+// ⓒ 구역 이탈 손익분기 — 강서 출발 콜 중 구역 내(→강서) vs 이탈(→밖) 실질 시급.
+// 이탈 콜의 회전 간격에는 복귀 시간이 자연히 포함돼 공정하게 비교된다.
+export interface ZoneExitBreakeven {
+  inside: CohortStat // 강서 → 강서(구역 내 회전)
+  exit: CohortStat // 강서 → 강서 밖(이탈)
+  ready: boolean
+}
+export function zoneExitBreakeven(trips: Trip[], settings: Settings): ZoneExitBreakeven {
+  const d = deriveTrips(trips, settings)
+  const fromGangseo = d.filter((x) => x.trip.from === MODE_DISTRICT.gangseo)
+  const inside = cohortStat(fromGangseo.filter((x) => x.trip.to === MODE_DISTRICT.gangseo))
+  const exit = cohortStat(fromGangseo.filter((x) => x.trip.to !== MODE_DISTRICT.gangseo))
+  return {
+    inside,
+    exit,
+    ready: inside.count >= REPORT_MIN && exit.count >= REPORT_MIN,
+  }
+}
