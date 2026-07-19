@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+
+/* 이 앱은 야간용 도구라 다크 모드가 기본(그리고 유일)이다.
+   color-scheme: dark 로 브라우저 기본 위젯(스크롤바 등)도 어둡게 맞춘다. */
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0b0f14; /* 짙은 남색-검정 배경 */
+  color: #e5e7eb; /* 밝은 회색 글자 */
+  font-family:
+    'Pretendard', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* 한 손 조작·야간 사용을 위해 탭 하이라이트 깜빡임을 없앤다. */
+  -webkit-tap-highlight-color: transparent;
+}
