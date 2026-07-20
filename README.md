@@ -1,32 +1,62 @@
-# React + TypeScript + Vite
+# 운행일지·작전판
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+부산·경남에서 부업으로 대리운전을 하는 기사 **본인 전용** 운행 기록 + 데이터 기반 대기 전략 도구.
+서버 없이 폰 브라우저(localStorage)에만 저장되는 개인용 PWA입니다.
 
-Currently, two official plugins are available:
+- 스택: Vite + React + TypeScript + Tailwind CSS v4 + PWA(vite-plugin-pwa)
+- 저장: `localStorage`만 사용 (서버·로그인·외부 API 없음)
+- 다크 모드 기본, 모바일 한 손 조작 최적화
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 로컬 실행
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install      # 처음 한 번, 의존성 설치
+npm run dev      # 개발 서버 실행 → 브라우저에서 표시되는 주소 접속
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+기타 명령:
+
+```bash
+npm test         # 계산 규칙 단위 테스트(53개)
+npm run build    # 프로덕션 빌드(dist/ 생성)
+npm run preview  # 빌드 결과를 로컬에서 미리보기(PWA·오프라인 확인용)
+```
+
+## Vercel 배포 (무료)
+
+이 저장소는 이미 GitHub에 올라가 있어, Vercel에 연결만 하면 됩니다.
+
+1. <https://vercel.com> 접속 → **GitHub 계정으로 로그인**.
+2. **Add New… → Project** 클릭.
+3. 이 저장소(`milttegi`)를 **Import**.
+4. Vercel이 자동으로 **Vite** 프로젝트로 인식합니다. 아래 값 확인만 하면 됩니다(대부분 자동):
+   - Framework Preset: **Vite**
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+5. **Deploy** 클릭 → 1~2분 뒤 `https://<프로젝트이름>.vercel.app` 주소가 나옵니다.
+
+이후 GitHub `main`에 푸시할 때마다 Vercel이 **자동 재배포**합니다.
+환경변수·API 키는 필요 없습니다(외부 서버를 쓰지 않음).
+
+## 폰 홈 화면에 추가 (앱처럼 사용)
+
+배포된 주소를 폰에서 연 뒤:
+
+- **안드로이드 크롬**: 우측 상단 **⋮ 메뉴 → "홈 화면에 추가" / "앱 설치"** → 확인.
+- **아이폰 사파리**: 하단 **공유 버튼(□↑) → "홈 화면에 추가"** → 추가.
+
+추가하면 홈 화면 아이콘으로 실행되고, **오프라인(지하주차장 등 데이터 안 터지는 곳)에서도 완전히 동작**합니다.
+
+## 데이터 보관 주의
+
+- 모든 기록은 **그 폰의 브라우저 안에만** 저장됩니다(서버 백업 없음).
+- 브라우저 데이터 삭제·기기 변경 시 사라질 수 있으니, **설정 탭 → 데이터 백업 → 내보내기(JSON)** 로 가끔 파일을 저장해 두세요.
+- 기기를 바꾸면 새 기기에서 **가져오기**로 복원합니다.
+
+## 초기 설정 (첫 실행 후 꼭)
+
+설정 탭에서 **본인 값으로 수정**하세요("수정 요망" 배지):
+
+- 플랫폼 **수수료율** — 실제 정산 기준(수시 변동).
+- **최소 시급** — 본인 기준.
+- 즐겨찾기·내 구역 — 자주 다니는 지역/구역.
