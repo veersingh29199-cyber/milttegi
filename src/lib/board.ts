@@ -1,7 +1,7 @@
 import type { DailyExpenses, Settings, Trip } from '../types/models'
 import {
   splitSessions,
-  netFare,
+  tripNet,
   turnGapMin,
   businessWeekday,
   businessDay,
@@ -75,9 +75,6 @@ export interface TripDerived {
 // 각 기록의 실수령과 "다음 기록까지 회전 간격"을 계산한다.
 // 회전 간격은 세션 경계를 넘지 않으며, 막콜(세션 마지막)은 null이다.
 export function deriveTrips(trips: Trip[], settings: Settings): TripDerived[] {
-  const feeRateOf = (platformId: string) =>
-    settings.platforms.find((p) => p.id === platformId)?.feeRate ?? 0
-
   const sessions = splitSessions(trips, settings.sessionGapMin)
   const out: TripDerived[] = []
   for (const session of sessions) {
@@ -87,7 +84,7 @@ export function deriveTrips(trips: Trip[], settings: Settings): TripDerived[] {
       const isLast = i === list.length - 1 // 막콜
       out.push({
         trip: t,
-        net: netFare(t.fare, feeRateOf(t.platformId)),
+        net: tripNet(t.fare, t.platformId, settings),
         gapMin: isLast ? null : turnGapMin(t.at, list[i + 1].at),
       })
     }
@@ -218,7 +215,7 @@ export function platformCompare(trips: Trip[], settings: Settings): PlatformStat
     .map((p) => {
       const list = trips.filter((t) => t.platformId === p.id)
       const fareSum = list.reduce((s, t) => s + t.fare, 0)
-      const netSum = list.reduce((s, t) => s + netFare(t.fare, p.feeRate), 0)
+      const netSum = list.reduce((s, t) => s + tripNet(t.fare, t.platformId, settings), 0)
       const count = list.length
       return {
         id: p.id,
@@ -301,7 +298,7 @@ export function weeklySummary(
   const inRange = trips.filter((t) => daySet.has(businessDay(t.at)))
 
   const netSum = inRange.reduce(
-    (s, t) => s + netFare(t.fare, settings.platforms.find((p) => p.id === t.platformId)?.feeRate ?? 0),
+    (s, t) => s + tripNet(t.fare, t.platformId, settings),
     0,
   )
   const expenseSum = [...daySet].reduce((s, day) => s + (expenses[day] ?? 0), 0)
@@ -314,8 +311,7 @@ export function weeklySummary(
     if (session.trips.length < 2) continue
     workedMin += sessionDurationMin(session)
     netForHourly += session.trips.reduce(
-      (s, t) =>
-        s + netFare(t.fare, settings.platforms.find((p) => p.id === t.platformId)?.feeRate ?? 0),
+      (s, t) => s + tripNet(t.fare, t.platformId, settings),
       0,
     )
   }

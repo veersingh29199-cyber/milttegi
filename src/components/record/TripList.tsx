@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { Settings, Trip } from '../../types/models'
 import { districtName } from '../../data/regions'
 import { formatHm } from '../../lib/time'
-import { netFare } from '../../lib/calc'
+import { tripNet } from '../../lib/calc'
 
 // 당일 기록 한 줄. 좌로 밀면 뒤에서 삭제 버튼이 나오고, 내용을 탭하면 수정한다.
 // 라이브러리 없이 pointer 이벤트로 스와이프를 직접 구현한다(터치·마우스 모두 동작).
@@ -10,12 +10,14 @@ function TripRow({
   trip,
   platformName,
   net,
+  showNet,
   onEdit,
   onDelete,
 }: {
   trip: Trip
   platformName: string
   net: number
+  showNet: boolean
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -91,7 +93,9 @@ function TripRow({
           <div className="text-sm font-semibold text-white tabular-nums">
             {trip.fare.toLocaleString()}원
           </div>
-          <div className="text-xs text-emerald-400 tabular-nums">실 {net.toLocaleString()}</div>
+          {showNet && (
+            <div className="text-xs text-emerald-400 tabular-nums">실 {net.toLocaleString()}</div>
+          )}
         </div>
       </div>
     </li>
@@ -125,7 +129,8 @@ export function TripList({
             key={t.id}
             trip={t}
             platformName={platform?.name ?? t.platformId}
-            net={netFare(t.fare, platform?.feeRate ?? 0)}
+            net={tripNet(t.fare, t.platformId, settings)}
+            showNet={!settings.fareIsNet}
             onEdit={() => onEdit(t)}
             onDelete={() => onDelete(t.id)}
           />

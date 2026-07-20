@@ -3,9 +3,11 @@
 export function FareInput({
   value,
   onChange,
+  subtitle,
 }: {
   value: number
   onChange: (fare: number) => void
+  subtitle?: string
 }) {
   // 숫자 하나를 뒤에 붙인다(요금은 최대 6자리로 제한 = 999,999원).
   const pushDigit = (d: number) => {
@@ -32,7 +34,9 @@ export function FareInput({
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-sm font-medium text-neutral-300">요금</span>
+        <span className="text-sm font-medium text-neutral-300">
+          요금{subtitle && <span className="ml-1 text-xs text-neutral-500">{subtitle}</span>}
+        </span>
         <span className="text-2xl font-bold text-white tabular-nums">
           {value.toLocaleString()}
           <span className="ml-1 text-base font-normal text-neutral-400">원</span>

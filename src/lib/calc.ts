@@ -1,4 +1,4 @@
-import type { Trip } from '../types/models'
+import type { Settings, Trip } from '../types/models'
 
 // 이 파일은 화면과 완전히 분리된 "순수 함수"만 모은 계산기다.
 // 순수 함수 = 같은 입력이면 항상 같은 출력, 바깥 상태를 건드리지 않음.
@@ -10,6 +10,15 @@ const MS_PER_MIN = 60_000
 // 원화는 소수점이 없으므로 원 단위로 반올림한다(부동소수 오차 방지 겸).
 export function netFare(fare: number, feeRate: number): number {
   return Math.round(fare * (1 - feeRate))
+}
+
+// 한 건의 실수령액을 "요금 입력 기준(settings.fareIsNet)"에 맞게 계산한다.
+// fareIsNet=true: 입력한 요금이 이미 수수료를 뗀 실수령 → 그대로 사용(이중 차감 방지).
+// fareIsNet=false: 표시 요금 → 플랫폼 수수료율을 적용.
+export function tripNet(fare: number, platformId: string, settings: Settings): number {
+  if (settings.fareIsNet) return Math.round(fare)
+  const feeRate = settings.platforms.find((p) => p.id === platformId)?.feeRate ?? 0
+  return netFare(fare, feeRate)
 }
 
 // 회전 간격(분) = 다음 기록 시각 − 이번 기록 시각.

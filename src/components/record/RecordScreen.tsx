@@ -182,7 +182,11 @@ export function RecordScreen() {
         }}
       />
 
-      <FareInput value={fare} onChange={setFare} />
+      <FareInput
+        value={fare}
+        onChange={setFare}
+        subtitle={settings.fareIsNet ? '(실수령)' : '(표시요금)'}
+      />
 
       <div className="flex gap-2">
         <Toggle label="비" on={rain} onToggle={() => setRain((v) => !v)} />

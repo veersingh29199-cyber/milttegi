@@ -88,8 +88,48 @@ export function SettingsScreen() {
     <div className="mx-auto flex max-w-md flex-col gap-4 px-4 pt-4 pb-24">
       <h1 className="text-lg font-bold text-white">설정</h1>
 
-      {/* 1. 플랫폼 수수료율 */}
-      <Section title={<>플랫폼 수수료율<EditBadge /></>}>
+      {/* 0. 요금 입력 기준 */}
+      <Section title="요금 입력 기준">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => update({ fareIsNet: true })}
+            className={`flex-1 rounded-lg py-2.5 text-sm ${
+              settings.fareIsNet ? 'bg-emerald-600 text-white' : 'bg-neutral-800 text-neutral-300'
+            }`}
+          >
+            실수령 (수수료 뗀 금액)
+          </button>
+          <button
+            type="button"
+            onClick={() => update({ fareIsNet: false })}
+            className={`flex-1 rounded-lg py-2.5 text-sm ${
+              !settings.fareIsNet ? 'bg-emerald-600 text-white' : 'bg-neutral-800 text-neutral-300'
+            }`}
+          >
+            표시요금 (수수료 전)
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-neutral-600">
+          {settings.fareIsNet
+            ? '입력한 요금을 그대로 실수령으로 계산합니다. 아래 수수료율은 쓰지 않아요.'
+            : '표시요금을 입력하면 아래 수수료율을 빼서 실수령을 계산합니다.'}
+        </p>
+      </Section>
+
+      {/* 1. 플랫폼 수수료율 (표시요금 모드에서만 사용) */}
+      <Section
+        title={
+          <>
+            플랫폼 수수료율{!settings.fareIsNet && <EditBadge />}
+            {settings.fareIsNet && (
+              <span className="ml-2 rounded bg-neutral-800 px-1.5 py-0.5 text-[11px] text-neutral-500">
+                실수령 모드 — 미사용
+              </span>
+            )}
+          </>
+        }
+      >
         <div className="flex flex-col gap-2">
           {settings.platforms.map((p, i) => (
             <div key={p.id} className="flex items-center gap-2">

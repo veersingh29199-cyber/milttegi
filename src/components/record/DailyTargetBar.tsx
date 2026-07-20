@@ -1,5 +1,5 @@
 import type { Settings, Trip } from '../../types/models'
-import { businessDay, netFare } from '../../lib/calc'
+import { businessDay, tripNet } from '../../lib/calc'
 import { nowLocalISO } from '../../lib/time'
 
 // 오늘(영업일) 실수령 합 vs 하루 목표액 진행바.
@@ -9,10 +9,9 @@ export function DailyTargetBar({ trips, settings }: { trips: Trip[]; settings: S
   if (!target || target <= 0) return null // 목표 미설정이면 표시 안 함
 
   const today = businessDay(nowLocalISO())
-  const feeRateOf = (id: string) => settings.platforms.find((p) => p.id === id)?.feeRate ?? 0
   const todayNet = trips
     .filter((t) => businessDay(t.at) === today)
-    .reduce((s, t) => s + netFare(t.fare, feeRateOf(t.platformId)), 0)
+    .reduce((s, t) => s + tripNet(t.fare, t.platformId, settings), 0)
 
   const ratio = Math.min(1, todayNet / target)
   const pct = Math.round((todayNet / target) * 100)

@@ -17,7 +17,11 @@ import {
   zoneExitBreakeven,
 } from './board'
 import { DEFAULT_SETTINGS } from '../storage/store'
+import { tripNet } from './calc'
 import type { Trip, DailyExpenses } from '../types/models'
+
+// 이 파일의 대부분 테스트는 "표시요금 → 수수료 차감" 경로(0.2)를 검증하므로 표시요금 모드로 고정.
+const S = { ...DEFAULT_SETTINGS, fareIsNet: false }
 
 function trip(id: string, at: string, extra: Partial<Trip> = {}): Trip {
   return {
@@ -75,7 +79,7 @@ describe('deriveTrips — 실수령·회전간격', () => {
       trip('a', '2026-07-20T20:00:00'),
       trip('b', '2026-07-20T20:40:00'), // a→b 40분
     ]
-    const d = deriveTrips(trips, DEFAULT_SETTINGS)
+    const d = deriveTrips(trips, S)
     const a = d.find((x) => x.trip.id === 'a')!
     const b = d.find((x) => x.trip.id === 'b')!
     expect(a.gapMin).toBe(40)
@@ -88,7 +92,7 @@ describe('deriveTrips — 실수령·회전간격', () => {
       trip('b', '2026-07-20T20:30:00'),
       trip('c', '2026-07-20T23:00:00'), // +150분 > 120 → 세션 컷
     ]
-    const d = deriveTrips(trips, DEFAULT_SETTINGS)
+    const d = deriveTrips(trips, S)
     expect(d.find((x) => x.trip.id === 'b')!.gapMin).toBeNull() // 첫 세션 막콜
   })
 })
@@ -101,7 +105,7 @@ describe('aggregateCell — 시간당 실수령', () => {
       trip('b', '2026-07-20T21:00:00'),
       trip('c', '2026-07-20T22:00:00'),
     ]
-    const d = deriveTrips(trips, DEFAULT_SETTINGS)
+    const d = deriveTrips(trips, S)
     const cell = aggregateCell(d)
     expect(cell.count).toBe(3)
     expect(cell.avgGapMin).toBe(60)
@@ -109,7 +113,7 @@ describe('aggregateCell — 시간당 실수령', () => {
     expect(cell.hourlyNet).toBe(8000)
   })
   it('회전 데이터가 전혀 없으면 null', () => {
-    const d = deriveTrips([trip('a', '2026-07-20T20:00:00')], DEFAULT_SETTINGS)
+    const d = deriveTrips([trip('a', '2026-07-20T20:00:00')], S)
     const cell = aggregateCell(d)
     expect(cell.count).toBe(1)
     expect(cell.avgGapMin).toBeNull()
@@ -120,13 +124,13 @@ describe('aggregateCell — 시간당 실수령', () => {
 describe('coarseGrid / shouldRefine', () => {
   it('낮 표본이 없으면 낮 구간은 노출하지 않는다', () => {
     const trips = [trip('a', '2026-07-20T20:00:00'), trip('b', '2026-07-20T21:00:00')]
-    const grid = coarseGrid(deriveTrips(trips, DEFAULT_SETTINGS))
+    const grid = coarseGrid(deriveTrips(trips, S))
     expect(grid.buckets).not.toContain('day')
     expect(grid.buckets).toContain('evening')
   })
   it('데이터가 얇으면 세분화하지 않는다', () => {
     const trips = [trip('a', '2026-07-20T20:00:00'), trip('b', '2026-07-20T21:00:00')]
-    expect(shouldRefine(deriveTrips(trips, DEFAULT_SETTINGS))).toBe(false)
+    expect(shouldRefine(deriveTrips(trips, S))).toBe(false)
   })
 })
 
@@ -137,7 +141,7 @@ describe('platformCompare — 위젯② 플랫폼 비교', () => {
       trip('b', '2026-07-20T21:00:00', { platformId: 'kakao', fare: 20000 }),
       trip('c', '2026-07-20T22:00:00', { platformId: 'tmap', fare: 15000 }),
     ]
-    const stats = platformCompare(trips, DEFAULT_SETTINGS)
+    const stats = platformCompare(trips, S)
     const kakao = stats.find((s) => s.id === 'kakao')!
     expect(kakao.count).toBe(2)
     expect(kakao.avgFare).toBe(15000) // (10000+20000)/2
@@ -156,7 +160,7 @@ describe('destinationRanking — 위젯③ 도착지 랭킹', () => {
       trip('b', '2026-07-20T20:40:00', { to: '26530' }), // 막콜(다음은 3시간 뒤)
       trip('c', '2026-07-20T23:50:00', { to: '26260' }), // 막콜(세션 끝)
     ]
-    const ranking = destinationRanking(trips, DEFAULT_SETTINGS)
+    const ranking = destinationRanking(trips, S)
     const dongrae = ranking.find((d) => d.code === '26260')!
     expect(dongrae.count).toBe(2)
     expect(dongrae.avgGapMin).toBe(40) // a만 회전 데이터 있음
@@ -172,7 +176,7 @@ describe('weeklySummary — 위젯④ 주간 요약', () => {
       trip('b', '2026-07-20T21:00:00', { fare: 10000 }),
     ]
     const expenses: DailyExpenses = { '2026-07-20': 5000 }
-    const s = weeklySummary(trips, expenses, DEFAULT_SETTINGS, '2026-07-20T23:00:00', 7)
+    const s = weeklySummary(trips, expenses, S, '2026-07-20T23:00:00', 7)
     expect(s.tripCount).toBe(2)
     expect(s.netSum).toBe(16000) // 8000 + 8000
     expect(s.expenseSum).toBe(5000)
@@ -186,7 +190,7 @@ describe('weeklySummary — 위젯④ 주간 요약', () => {
       trip('old', '2026-07-01T20:00:00', { fare: 99000 }), // 7일보다 이전
       trip('new', '2026-07-20T20:00:00', { fare: 10000 }),
     ]
-    const s = weeklySummary(trips, {}, DEFAULT_SETTINGS, '2026-07-20T23:00:00', 7)
+    const s = weeklySummary(trips, {}, S, '2026-07-20T23:00:00', 7)
     expect(s.tripCount).toBe(1)
     expect(s.netSum).toBe(8000)
   })
@@ -195,16 +199,16 @@ describe('weeklySummary — 위젯④ 주간 요약', () => {
 describe('zoneKind — 내 구역 중심/외곽 분류', () => {
   it('라벨로 중심/외곽을 가른다', () => {
     // 기본 프리셋: zone-myeongji-center='명지 중심', zone-myeongji-outer='명지 외곽'
-    expect(zoneKind('zone-myeongji-center', DEFAULT_SETTINGS)).toBe('center')
-    expect(zoneKind('zone-myeongji-outer', DEFAULT_SETTINGS)).toBe('outer')
-    expect(zoneKind('zone-sinho', DEFAULT_SETTINGS)).toBeNull() // 신호단지=분류 불가
-    expect(zoneKind(undefined, DEFAULT_SETTINGS)).toBeNull()
+    expect(zoneKind('zone-myeongji-center', S)).toBe('center')
+    expect(zoneKind('zone-myeongji-outer', S)).toBe('outer')
+    expect(zoneKind('zone-sinho', S)).toBeNull() // 신호단지=분류 불가
+    expect(zoneKind(undefined, S)).toBeNull()
   })
 })
 
 describe('리포트 ⓐ 평일 강서 vs 주말 동래', () => {
   it('표본이 부족하면 ready=false', () => {
-    const r = gangseoVsDongrae([trip('a', '2026-07-20T20:00:00')], DEFAULT_SETTINGS)
+    const r = gangseoVsDongrae([trip('a', '2026-07-20T20:00:00')], S)
     expect(r.ready).toBe(false)
   })
   it('두 코호트를 각각 시간당 실수령으로 집계한다', () => {
@@ -218,7 +222,7 @@ describe('리포트 ⓐ 평일 강서 vs 주말 동래', () => {
       trip('d2', '2026-07-19T21:00:00', { from: '26260' }),
       trip('d3', '2026-07-19T22:00:00', { from: '26260' }),
     ]
-    const r = gangseoVsDongrae(trips, DEFAULT_SETTINGS)
+    const r = gangseoVsDongrae(trips, S)
     expect(r.ready).toBe(true)
     expect(r.weekdayGangseo.count).toBe(3)
     expect(r.weekendDongrae.count).toBe(3)
@@ -234,7 +238,7 @@ describe('리포트 ⓒ 구역 이탈 손익분기', () => {
       trip('out1', '2026-07-20T20:40:00', { from: '26440', to: '26260' }),
       trip('in2', '2026-07-20T21:20:00', { from: '26440', to: '26440' }),
     ]
-    const r = zoneExitBreakeven(trips, DEFAULT_SETTINGS)
+    const r = zoneExitBreakeven(trips, S)
     expect(r.inside.count).toBe(2)
     expect(r.exit.count).toBe(1)
   })
@@ -246,8 +250,23 @@ describe('리포트 ⓑ 기피 프리미엄', () => {
       trip('c1', '2026-07-20T20:00:00', { toZone: 'zone-myeongji-center', fare: 10000 }),
       trip('o1', '2026-07-20T20:40:00', { toZone: 'zone-myeongji-outer', fare: 20000 }),
     ]
-    const r = avoidancePremium(trips, DEFAULT_SETTINGS)
+    const r = avoidancePremium(trips, S)
     expect(r.center.avgFare).toBe(10000)
     expect(r.outer.avgFare).toBe(20000) // 외곽이 단가 높음(기피 프리미엄)
+  })
+})
+
+describe('fareIsNet — 실수령 입력 모드(이중 차감 방지)', () => {
+  it('실수령 모드(기본)면 입력 요금을 그대로 실수령으로 쓴다', () => {
+    expect(tripNet(10000, 'kakao', DEFAULT_SETTINGS)).toBe(10000) // DEFAULT는 fareIsNet:true
+    expect(tripNet(10000, 'kakao', S)).toBe(8000) // 표시요금 모드는 수수료 0.2 적용
+  })
+  it('주간 요약도 실수령 모드를 따른다(수수료 재차감 없음)', () => {
+    const trips = [
+      trip('a', '2026-07-20T20:00:00', { fare: 10000 }),
+      trip('b', '2026-07-20T21:00:00', { fare: 10000 }),
+    ]
+    const sum = weeklySummary(trips, {}, DEFAULT_SETTINGS, '2026-07-20T23:00:00', 7)
+    expect(sum.netSum).toBe(20000) // 20000 그대로(표시요금 모드였다면 16000)
   })
 })

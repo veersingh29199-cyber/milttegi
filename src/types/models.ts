@@ -21,6 +21,8 @@ export interface Settings {
   platforms: Platform[]
   minHourly: number // 최소 시급 기준(원). 초기 15000, 사용자 수정 대상.
   dailyTarget: number // 하루 목표액(원, 실수령 기준). 초기값 임의, 사용자 수정 대상.
+  // 요금 입력 기준. true=입력값이 이미 수수료 뗀 실수령, false=표시요금(수수료 전).
+  fareIsNet: boolean
   favorites: string[] // 즐겨찾기 시군구 5자리 코드 목록
   customZones: CustomZone[]
   sessionGapMin: number // 세션 컷 기준(분). 기본 120, 설정 화면에는 숨김(상수 취급).
