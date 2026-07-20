@@ -6,6 +6,7 @@ import { businessDay } from '../../lib/calc'
 import { newId } from '../../lib/id'
 import { lastPlatformId } from '../../lib/recent'
 import { districtName } from '../../data/regions'
+import { parseScreenshot, type RecognizedTrip } from '../../lib/parseScreenshot'
 import { PlatformChips } from './PlatformChips'
 import { RegionField } from './RegionField'
 import { FareInput } from './FareInput'
@@ -43,10 +44,43 @@ export function BulkEntryScreen({
   // 참고용 스크린샷(자동 인식 안 함, 저장 안 함, 세션 중 화면에만 표시).
   const [shot, setShot] = useState<string | null>(null)
   const shotRef = useRef<HTMLInputElement>(null)
+  // 자동 인식(Gemini) 상태.
+  const [recognized, setRecognized] = useState<RecognizedTrip[]>([])
+  const [parsing, setParsing] = useState(false)
 
   const flash = (msg: string) => {
     setToast(msg)
     window.setTimeout(() => setToast(''), 1400)
+  }
+
+  // 코드가 실제 시군구인지(매핑 성공) 확인. districtName은 못 찾으면 코드 자체를 돌려준다.
+  const isValidCode = (code: string) => !!code && districtName(code) !== code
+
+  // 스크린샷을 서버(Gemini)로 보내 인식한다.
+  const runParse = async (file: File) => {
+    setParsing(true)
+    setRecognized([])
+    try {
+      const trips = await parseScreenshot(file, settings)
+      setRecognized(trips)
+      flash(trips.length ? `${trips.length}건 인식 · 탭해서 확인` : '인식된 운행이 없어요')
+    } catch (e) {
+      flash(e instanceof Error ? e.message : '인식 실패')
+    } finally {
+      setParsing(false)
+    }
+  }
+
+  // 인식 1건을 폼에 채운다(확인 후 저장 방식). 채운 항목은 목록에서 제거.
+  const applyRecognized = (r: RecognizedTrip, idx: number) => {
+    setFrom(isValidCode(r.fromCode) ? r.fromCode : '')
+    setFromZone(undefined)
+    setTo(isValidCode(r.toCode) ? r.toCode : '')
+    setToZone(undefined)
+    setFare(r.fare > 0 ? r.fare : 0)
+    if (/^\d{2}:\d{2}$/.test(r.timeHHmm)) setTime(r.timeHHmm)
+    setRecognized((list) => list.filter((_, i) => i !== idx))
+    flash('폼에 채웠어요 · 확인 후 저장')
   }
 
   // 이번 세션에 방금 추가한 기록들(시간 오름차순)을 화면에 보여준다.
@@ -133,6 +167,7 @@ export function BulkEntryScreen({
             if (file) {
               if (shot) URL.revokeObjectURL(shot)
               setShot(URL.createObjectURL(file))
+              void runParse(file) // 올리는 즉시 자동 인식 시작
             }
             e.target.value = ''
           }}
@@ -163,6 +198,48 @@ export function BulkEntryScreen({
             />
           </a>
         </div>
+      )}
+
+      {/* 자동 인식 결과: 탭하면 아래 폼에 채워짐(확인 후 저장) */}
+      {(parsing || recognized.length > 0) && (
+        <section className="rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-3">
+          <h2 className="mb-2 text-sm font-semibold text-emerald-300">
+            자동 인식 {parsing ? '중…' : `결과 (${recognized.length}건)`}
+          </h2>
+          {parsing ? (
+            <p className="text-xs text-neutral-400">스크린샷을 읽는 중이에요…</p>
+          ) : (
+            <>
+              <ul className="flex flex-col gap-1.5" aria-label="자동 인식 결과">
+                {recognized.map((r, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onClick={() => applyRecognized(r, i)}
+                      className="flex w-full items-center justify-between rounded-lg bg-neutral-900 px-3 py-2 text-left"
+                    >
+                      <span className="min-w-0 text-sm text-neutral-200">
+                        {r.timeHHmm && (
+                          <span className="tabular-nums text-neutral-500">{r.timeHHmm} </span>
+                        )}
+                        {isValidCode(r.fromCode) ? districtName(r.fromCode) : r.fromText || '?'}
+                        {' → '}
+                        {isValidCode(r.toCode) ? districtName(r.toCode) : r.toText || '?'}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                        <span className="text-neutral-300">{(r.fare || 0).toLocaleString()}원</span>
+                        {r.confidence < 0.6 && <span className="text-amber-400">확인!</span>}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-xs text-neutral-600">
+                탭하면 아래 폼에 채워져요. 확인·수정 후 저장하세요.
+              </p>
+            </>
+          )}
+        </section>
       )}
 
       {/* 고정 날짜 */}
