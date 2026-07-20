@@ -19,7 +19,7 @@ import { RouteFinder } from './RouteFinder'
 // 기록 탭 메인 화면. 위→아래로 시각·플랫폼·출발·도착·요금·토글, 하단 고정 저장.
 export function RecordScreen() {
   const settings = useSettings()
-  const { trips, addTrip, updateTrip, deleteTrip } = useTrips()
+  const { trips, addTrip, updateTrip, deleteTrip, saveError } = useTrips()
 
   // 몰아입력 모드 여부(기록 탭 안에서 전환).
   const [bulk, setBulk] = useState(false)
@@ -143,6 +143,13 @@ export function RecordScreen() {
         </button>
       </div>
 
+      {/* 저장 실패 경고: 이게 뜨면 기록이 기기에 남지 않으니 즉시 알아야 한다. */}
+      {saveError && (
+        <p className="rounded-lg border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          ⚠️ {saveError}
+        </p>
+      )}
+
       {/* ① 하루 목표 진행바 · ② 길찾기 */}
       <DailyTargetBar trips={trips} settings={settings} />
       <RouteFinder />
@@ -184,7 +191,10 @@ export function RecordScreen() {
 
       <section className="mt-2">
         <h2 className="mb-2 text-sm font-semibold text-neutral-300">
-          오늘 기록 <span className="text-neutral-500">({todayTrips.length}건)</span>
+          오늘 기록{' '}
+          <span className="text-neutral-500">
+            ({todayTrips.length}건 · 전체 {trips.length}건)
+          </span>
         </h2>
         <TripList
           trips={todayTrips}
