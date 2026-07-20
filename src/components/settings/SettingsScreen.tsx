@@ -149,6 +149,26 @@ export function SettingsScreen() {
         </div>
       </Section>
 
+      {/* 2-b. 하루 목표액 */}
+      <Section title={<>하루 목표액<EditBadge /></>}>
+        <div className="flex items-center gap-2">
+          <input
+            aria-label="하루 목표액(원)"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={10000}
+            value={settings.dailyTarget}
+            onChange={(e) => update({ dailyTarget: Math.max(0, Number(e.target.value) || 0) })}
+            className="w-40 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-right text-sm text-white tabular-nums"
+          />
+          <span className="text-sm text-neutral-400">원 / 일</span>
+        </div>
+        <p className="mt-2 text-xs text-neutral-600">
+          실수령 기준. 기록 탭 상단 진행바에 표시돼요. 0으로 두면 진행바를 숨깁니다.
+        </p>
+      </Section>
+
       {/* 3. 즐겨찾기 관리 */}
       <Section title="즐겨찾기 지역">
         <div className="flex flex-wrap gap-2">

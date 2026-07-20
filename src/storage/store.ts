@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
     { id: 'tmap', name: '티맵', feeRate: 0.2 },
   ],
   minHourly: 15000,
+  dailyTarget: 100000,
   // 즐겨찾기 초기값: 부산 강서/동래/사상/사하/북구 + 경남 김해/창원
   favorites: ['26440', '26260', '26530', '26380', '26320', '48250', '48120'],
   // 내 구역 프리셋: 강서구(26440) 하위 3개

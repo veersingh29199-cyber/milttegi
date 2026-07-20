@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { Settings, Trip } from '../../types/models'
 import { getDailyExpenses, saveDailyExpenses } from '../../storage/store'
 import { atForBusinessDay, nowLocalISO, formatHm } from '../../lib/time'
@@ -40,6 +40,9 @@ export function BulkEntryScreen({
   const [addedIds, setAddedIds] = useState<string[]>([]) // 이번 세션에 추가한 기록 id
   const [expense, setExpense] = useState<number>(() => getDailyExpenses()[businessDay(nowLocalISO())] ?? 0)
   const [toast, setToast] = useState('')
+  // 참고용 스크린샷(자동 인식 안 함, 저장 안 함, 세션 중 화면에만 표시).
+  const [shot, setShot] = useState<string | null>(null)
+  const shotRef = useRef<HTMLInputElement>(null)
 
   const flash = (msg: string) => {
     setToast(msg)
@@ -104,14 +107,63 @@ export function BulkEntryScreen({
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-white">몰아입력</h1>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
-        >
-          완료
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => shotRef.current?.click()}
+            className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
+          >
+            📷 스크린샷
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
+          >
+            완료
+          </button>
+        </div>
+        <input
+          ref={shotRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) {
+              if (shot) URL.revokeObjectURL(shot)
+              setShot(URL.createObjectURL(file))
+            }
+            e.target.value = ''
+          }}
+        />
       </div>
+
+      {/* 참고용 스크린샷: 화면 상단에 고정. 앱이 자동으로 읽지 않고, 보며 아래에 입력한다. */}
+      {shot && (
+        <div className="sticky top-0 z-10 -mx-4 border-b border-neutral-800 bg-neutral-950/95 px-4 py-2 backdrop-blur">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs text-neutral-500">참고 스크린샷 (보며 아래에 입력)</span>
+            <button
+              type="button"
+              onClick={() => {
+                URL.revokeObjectURL(shot)
+                setShot(null)
+              }}
+              className="text-xs text-neutral-400"
+            >
+              닫기 ✕
+            </button>
+          </div>
+          <a href={shot} target="_blank" rel="noopener">
+            <img
+              src={shot}
+              alt="참고 스크린샷"
+              className="max-h-56 w-full rounded-lg object-contain"
+            />
+          </a>
+        </div>
+      )}
 
       {/* 고정 날짜 */}
       <div className="flex items-center justify-between rounded-lg bg-neutral-900 px-3 py-2">

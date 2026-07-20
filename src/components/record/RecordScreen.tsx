@@ -13,6 +13,8 @@ import { FareInput } from './FareInput'
 import { Toggle } from './ToggleRow'
 import { TripList } from './TripList'
 import { BulkEntryScreen } from './BulkEntryScreen'
+import { DailyTargetBar } from './DailyTargetBar'
+import { RouteFinder } from './RouteFinder'
 
 // 기록 탭 메인 화면. 위→아래로 시각·플랫폼·출발·도착·요금·토글, 하단 고정 저장.
 export function RecordScreen() {
@@ -140,6 +142,11 @@ export function RecordScreen() {
           몰아입력
         </button>
       </div>
+
+      {/* ① 하루 목표 진행바 · ② 길찾기 */}
+      <DailyTargetBar trips={trips} settings={settings} />
+      <RouteFinder />
+
       <TimeField value={at} onChange={setAt} />
 
       <PlatformChips platforms={settings.platforms} value={platformId} onChange={setPlatformId} />
