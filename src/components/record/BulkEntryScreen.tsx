@@ -83,6 +83,39 @@ export function BulkEntryScreen({
     flash('폼에 채웠어요 · 확인 후 저장')
   }
 
+  // 인식 결과 중 '확실한 것'(출발·도착 매핑 성공 + 요금 + 시각)을 한 번에 저장한다.
+  // 애매한 건(매핑 실패·시각 없음)은 목록에 남겨 사용자가 탭해서 확인.
+  const isComplete = (r: RecognizedTrip) =>
+    isValidCode(r.fromCode) && isValidCode(r.toCode) && r.fare > 0 && /^\d{2}:\d{2}$/.test(r.timeHHmm)
+
+  const saveAllRecognized = () => {
+    const complete = recognized.filter(isComplete)
+    if (complete.length === 0) {
+      flash('바로 저장할 건이 없어요 · 하나씩 탭해서 확인하세요')
+      return
+    }
+    const ids: string[] = []
+    for (const r of complete) {
+      const trip: Trip = {
+        id: newId(),
+        at: atForBusinessDay(businessDate, r.timeHHmm),
+        platformId,
+        from: r.fromCode,
+        to: r.toCode,
+        fare: r.fare,
+        rain: false,
+        event: false,
+      }
+      addTrip(trip)
+      ids.push(trip.id)
+    }
+    setAddedIds((prev) => [...prev, ...ids])
+    const leftover = recognized.length - complete.length
+    setRecognized((list) => list.filter((r) => !isComplete(r)))
+    flash(`${complete.length}건 저장${leftover ? ` · ${leftover}건 확인 필요` : ''}`)
+    navigator.vibrate?.(30)
+  }
+
   // 이번 세션에 방금 추가한 기록들(시간 오름차순)을 화면에 보여준다.
   const addedTrips = useMemo(
     () =>
@@ -234,8 +267,16 @@ export function BulkEntryScreen({
                   </li>
                 ))}
               </ul>
+              <button
+                type="button"
+                onClick={saveAllRecognized}
+                className="mt-2 w-full rounded-lg bg-emerald-600 py-2.5 text-sm font-bold text-white active:bg-emerald-700"
+              >
+                확실한 것 전체 저장
+              </button>
               <p className="mt-1.5 text-xs text-neutral-600">
-                탭하면 아래 폼에 채워져요. 확인·수정 후 저장하세요.
+                "전체 저장"은 매핑·시각까지 확실한 건만 넣어요. 애매한 건(확인! 표시)은 탭해서
+                직접 확인·저장하세요.
               </p>
             </>
           )}
