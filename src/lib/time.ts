@@ -42,3 +42,16 @@ export function formatMdHm(iso: string): string {
   const day = Number(iso.slice(8, 10))
   return `${month}/${day} ${formatHm(iso)}`
 }
+
+// 영업일(businessDate 'YYYY-MM-DD')과 시각('HH:mm')으로 실제 at(로컬 ISO)을 만든다.
+// 몰아입력에서 날짜를 고정한 채 시각만 입력할 때 쓴다.
+// 06시 이전(새벽) 시각은 달력상 다음 날에 해당하므로 날짜를 하루 넘긴다(영업일 경계와 일관).
+export function atForBusinessDay(businessDate: string, time: string): string {
+  const hour = Number(time.slice(0, 2))
+  if (hour >= 6) return `${businessDate}T${time}:00`
+  // 새벽(00~05시)은 영업일 다음 달력일.
+  const [y, m, d] = businessDate.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + 1)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}T${time}:00`
+}

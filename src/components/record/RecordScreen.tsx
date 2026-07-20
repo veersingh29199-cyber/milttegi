@@ -12,11 +12,15 @@ import { RegionField } from './RegionField'
 import { FareInput } from './FareInput'
 import { Toggle } from './ToggleRow'
 import { TripList } from './TripList'
+import { BulkEntryScreen } from './BulkEntryScreen'
 
 // 기록 탭 메인 화면. 위→아래로 시각·플랫폼·출발·도착·요금·토글, 하단 고정 저장.
 export function RecordScreen() {
   const settings = useSettings()
   const { trips, addTrip, updateTrip, deleteTrip } = useTrips()
+
+  // 몰아입력 모드 여부(기록 탭 안에서 전환).
+  const [bulk, setBulk] = useState(false)
 
   // --- 입력 폼 상태 ---
   const [at, setAt] = useState(nowLocalISO)
@@ -112,8 +116,30 @@ export function RecordScreen() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // 몰아입력 모드면 전용 화면으로 대체(놓친 날 몰아 기록).
+  if (bulk) {
+    return (
+      <BulkEntryScreen
+        settings={settings}
+        trips={trips}
+        addTrip={addTrip}
+        onClose={() => setBulk(false)}
+      />
+    )
+  }
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 px-4 pt-4 pb-40">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold text-white">기록</h1>
+        <button
+          type="button"
+          onClick={() => setBulk(true)}
+          className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
+        >
+          몰아입력
+        </button>
+      </div>
       <TimeField value={at} onChange={setAt} />
 
       <PlatformChips platforms={settings.platforms} value={platformId} onChange={setPlatformId} />
