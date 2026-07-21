@@ -61,6 +61,14 @@ export function saveTrips(trips: Trip[]): void {
   writeJson(STORAGE_KEYS.trips, trips)
 }
 
+export function getDeletedTripIds(): string[] {
+  return readJson<string[]>(STORAGE_KEYS.deletedTripIds, [])
+}
+
+export function saveDeletedTripIds(ids: string[]): void {
+  writeJson(STORAGE_KEYS.deletedTripIds, [...new Set(ids)])
+}
+
 export function getDailyExpenses(): DailyExpenses {
   return readJson<DailyExpenses>(STORAGE_KEYS.dailyExpenses, {})
 }

@@ -1,10 +1,10 @@
 # 운행일지·작전판
 
-부산·경남에서 부업으로 대리운전을 하는 기사 **본인 전용** 운행 기록 + 데이터 기반 대기 전략 도구.
-서버 없이 폰 브라우저(localStorage)에만 저장되는 개인용 PWA입니다.
+부산·경남에서 부업으로 대리운전을 하는 기사용 운행 기록 + 데이터 기반 대기 전략 도구.
+기본은 폰 브라우저(localStorage)에 저장되고, Supabase를 연결하면 2인 1조 팀 기록을 공유할 수 있는 PWA입니다.
 
 - 스택: Vite + React + TypeScript + Tailwind CSS v4 + PWA(vite-plugin-pwa)
-- 저장: `localStorage`만 사용 (서버·로그인·외부 API 없음)
+- 저장: 기본 `localStorage`, 선택 사항으로 Supabase 팀 공유
 - 다크 모드 기본, 모바일 한 손 조작 최적화
 
 ## 로컬 실행
@@ -36,7 +36,25 @@ npm run preview  # 빌드 결과를 로컬에서 미리보기(PWA·오프라인 
 5. **Deploy** 클릭 → 1~2분 뒤 `https://<프로젝트이름>.vercel.app` 주소가 나옵니다.
 
 이후 GitHub `main`에 푸시할 때마다 Vercel이 **자동 재배포**합니다.
-환경변수·API 키는 필요 없습니다(외부 서버를 쓰지 않음).
+팀 공유를 쓰지 않으면 환경변수·API 키는 필요 없습니다.
+
+## 2인 1조 팀 공유 설정
+
+팀 공유는 Supabase 프로젝트가 있을 때만 켜집니다.
+
+1. Supabase 프로젝트에서 Anonymous Sign-Ins를 활성화합니다.
+2. SQL Editor에서 `supabase-team-share.sql` 내용을 실행합니다.
+3. `.env.example`을 참고해 Vercel 환경변수 또는 로컬 `.env.local`에 아래 값을 넣습니다.
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-publishable-or-anon-key
+```
+
+4. 앱 설정 탭 → **2인 1조 팀 공유**에서 새 팀 코드를 만들고 동료에게 전달합니다.
+5. 동료는 같은 화면에서 팀 코드를 입력해 참여합니다.
+
+팀 공유를 켜도 각 기기의 `localStorage` 기록은 백업처럼 남습니다.
 
 ## 폰 홈 화면에 추가 (앱처럼 사용)
 
@@ -49,7 +67,8 @@ npm run preview  # 빌드 결과를 로컬에서 미리보기(PWA·오프라인 
 
 ## 데이터 보관 주의
 
-- 모든 기록은 **그 폰의 브라우저 안에만** 저장됩니다(서버 백업 없음).
+- 팀 공유를 켜지 않은 기록은 **그 폰의 브라우저 안에만** 저장됩니다.
+- 팀 공유를 켠 뒤 저장·수정·삭제한 운행 기록은 같은 팀 코드로 연결된 기기와 동기화됩니다.
 - 브라우저 데이터 삭제·기기 변경 시 사라질 수 있으니, **설정 탭 → 데이터 백업 → 내보내기(JSON)** 로 가끔 파일을 저장해 두세요.
 - 기기를 바꾸면 새 기기에서 **가져오기**로 복원합니다.
 

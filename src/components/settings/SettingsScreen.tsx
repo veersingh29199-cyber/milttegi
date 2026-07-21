@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react'
 import type { Settings } from '../../types/models'
-import { getSettings, saveSettings, exportAll, importAll, clearAll } from '../../storage/store'
+import { isCloudSyncConfigured } from '../../lib/supabase'
+import { joinCloudTeam, upsertCloudTrips } from '../../storage/cloudTrips'
+import { clearTeamId, getTeamId, newTeamId, saveTeamId } from '../../storage/team'
+import { getSettings, saveSettings, exportAll, importAll, clearAll, getTrips } from '../../storage/store'
 import { SCHEMA_VERSION } from '../../storage/keys'
 import { districtName } from '../../data/regions'
 import { newId } from '../../lib/id'
@@ -31,6 +34,8 @@ export function SettingsScreen() {
   const [favSheet, setFavSheet] = useState(false)
   const [zoneParentSheet, setZoneParentSheet] = useState(false)
   const [newZoneName, setNewZoneName] = useState('')
+  const [teamCodeInput, setTeamCodeInput] = useState('')
+  const [teamId, setTeamId] = useState(getTeamId)
   const [toast, setToast] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -82,6 +87,45 @@ export function SettingsScreen() {
     if (!window.confirm('정말 삭제합니다. 되돌릴 수 없어요. 진행할까요?')) return
     clearAll()
     window.location.reload()
+  }
+
+  const connectTeam = async (nextTeamId: string) => {
+    try {
+      await joinCloudTeam(nextTeamId)
+      await upsertCloudTrips(nextTeamId, getTrips())
+      saveTeamId(nextTeamId)
+      setTeamId(nextTeamId)
+      setTeamCodeInput('')
+      flash('팀 공유를 연결했어요')
+    } catch {
+      flash('팀 공유 연결 실패: Supabase 설정과 인터넷을 확인하세요')
+    }
+  }
+
+  const handleCreateTeam = () => {
+    void connectTeam(newTeamId())
+  }
+
+  const handleJoinTeam = () => {
+    const code = teamCodeInput.trim()
+    if (!code) {
+      flash('팀 코드를 입력하세요')
+      return
+    }
+    void connectTeam(code)
+  }
+
+  const handleCopyTeamCode = () => {
+    if (!teamId) return
+    void navigator.clipboard.writeText(teamId)
+    flash('팀 코드를 복사했어요')
+  }
+
+  const handleDisconnectTeam = () => {
+    if (!window.confirm('이 기기에서 팀 공유 연결만 해제할까요? 로컬 기록은 남습니다.')) return
+    clearTeamId()
+    setTeamId('')
+    flash('팀 공유 연결을 해제했어요')
   }
 
   return (
@@ -324,6 +368,75 @@ export function SettingsScreen() {
         </p>
       </Section>
 
+      {/* 5-b. 팀 공유 */}
+      <Section title="2인 1조 팀 공유">
+        {!isCloudSyncConfigured ? (
+          <div className="flex flex-col gap-2 text-sm text-neutral-400">
+            <p>Supabase 환경변수를 설정하면 팀 공유를 사용할 수 있어요.</p>
+            <code className="rounded-lg bg-neutral-950 px-3 py-2 text-xs text-neutral-300">
+              VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+            </code>
+          </div>
+        ) : teamId ? (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-neutral-500">현재 팀 코드</label>
+            <input
+              readOnly
+              value={teamId}
+              className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs text-neutral-300"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCopyTeamCode}
+                className="flex-1 rounded-lg bg-neutral-800 py-2.5 text-sm text-neutral-200"
+              >
+                코드 복사
+              </button>
+              <button
+                type="button"
+                onClick={handleDisconnectTeam}
+                className="flex-1 rounded-lg border border-red-800 py-2.5 text-sm text-red-300"
+              >
+                연결 해제
+              </button>
+            </div>
+            <p className="text-xs text-neutral-600">
+              동료가 같은 코드를 입력하면 서로의 운행 기록이 합쳐집니다.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleCreateTeam}
+              className="rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white"
+            >
+              새 팀 코드 만들기
+            </button>
+            <div className="flex gap-2">
+              <input
+                aria-label="팀 코드"
+                value={teamCodeInput}
+                onChange={(e) => setTeamCodeInput(e.target.value)}
+                placeholder="동료에게 받은 팀 코드"
+                className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white"
+              />
+              <button
+                type="button"
+                onClick={handleJoinTeam}
+                className="shrink-0 rounded-lg border border-emerald-700 px-3 py-2 text-sm text-emerald-300"
+              >
+                참여
+              </button>
+            </div>
+            <p className="text-xs text-neutral-600">
+              팀 공유를 켜도 이 기기 로컬 기록은 계속 백업처럼 남습니다.
+            </p>
+          </div>
+        )}
+      </Section>
+
       {/* 6. 전체 삭제 */}
       <Section title="위험 구역">
         <button
@@ -338,9 +451,9 @@ export function SettingsScreen() {
       {/* 7. 앱 정보 */}
       <Section title="앱 정보">
         <ul className="flex flex-col gap-1 text-sm text-neutral-400">
-          <li>운행일지·작전판 (개인용)</li>
+          <li>운행일지·작전판</li>
           <li>데이터 버전: {SCHEMA_VERSION}</li>
-          <li>저장 위치: 이 기기 브라우저(localStorage) — 서버 없음</li>
+          <li>저장 위치: 이 기기 브라우저(localStorage){teamId ? ' + 팀 공유' : ''}</li>
         </ul>
       </Section>
 

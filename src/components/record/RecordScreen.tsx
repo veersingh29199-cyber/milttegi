@@ -19,7 +19,7 @@ import { RouteFinder } from './RouteFinder'
 // 기록 탭 메인 화면. 위→아래로 시각·플랫폼·출발·도착·요금·토글, 하단 고정 저장.
 export function RecordScreen() {
   const settings = useSettings()
-  const { trips, addTrip, updateTrip, deleteTrip, saveError } = useTrips()
+  const { trips, addTrip, updateTrip, deleteTrip, saveError, syncError } = useTrips()
 
   // 몰아입력 모드 여부(기록 탭 안에서 전환).
   const [bulk, setBulk] = useState(false)
@@ -147,6 +147,11 @@ export function RecordScreen() {
       {saveError && (
         <p className="rounded-lg border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-300">
           ⚠️ {saveError}
+        </p>
+      )}
+      {syncError && (
+        <p className="rounded-lg border border-amber-800 bg-amber-950/40 px-3 py-2 text-sm text-amber-300">
+          {syncError}
         </p>
       )}
 

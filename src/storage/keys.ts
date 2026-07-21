@@ -4,7 +4,9 @@ export const STORAGE_KEYS = {
   schemaVersion: 'dv.schemaVersion', // 숫자: 저장 구조 버전
   settings: 'dv.settings', // Settings
   trips: 'dv.trips', // Trip[]
+  deletedTripIds: 'dv.deletedTripIds', // string[]: 팀 동기화 삭제 전파용 tombstone
   dailyExpenses: 'dv.dailyExpenses', // DailyExpenses
+  teamId: 'dv.teamId', // string: 2인 1조 공유 코드
 } as const
 
 // 코드가 기대하는 현재 스키마 버전. 구조가 바뀌면 이 숫자를 올린다.
