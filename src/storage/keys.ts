@@ -7,6 +7,8 @@ export const STORAGE_KEYS = {
   deletedTripIds: 'dv.deletedTripIds', // string[]: 팀 동기화 삭제 전파용 tombstone
   dailyExpenses: 'dv.dailyExpenses', // DailyExpenses
   teamId: 'dv.teamId', // string: 2인 1조 공유 코드
+  teamRole: 'dv.teamRole', // TeamRole: 이 기기의 고정 역할
+  teamOperation: 'dv.teamOperation', // TeamOperation: 오프라인에서도 보이는 현재 작전
 } as const
 
 // 코드가 기대하는 현재 스키마 버전. 구조가 바뀌면 이 숫자를 올린다.

@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
-import type { Settings } from '../../types/models'
+import type { Settings, TeamRole } from '../../types/models'
 import { isCloudSyncConfigured } from '../../lib/supabase'
 import { joinCloudTeam, upsertCloudTrips } from '../../storage/cloudTrips'
-import { clearTeamId, getTeamId, newTeamId, saveTeamId } from '../../storage/team'
+import { clearTeamId, getTeamId, getTeamRole, newTeamId, saveTeamId, saveTeamRole } from '../../storage/team'
 import { getSettings, saveSettings, exportAll, importAll, clearAll, getTrips } from '../../storage/store'
 import { SCHEMA_VERSION } from '../../storage/keys'
 import { districtName } from '../../data/regions'
@@ -36,6 +36,7 @@ export function SettingsScreen() {
   const [newZoneName, setNewZoneName] = useState('')
   const [teamCodeInput, setTeamCodeInput] = useState('')
   const [teamId, setTeamId] = useState(getTeamId)
+  const [teamRole, setTeamRole] = useState<TeamRole>(getTeamRole)
   const [toast, setToast] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -126,6 +127,12 @@ export function SettingsScreen() {
     clearTeamId()
     setTeamId('')
     flash('팀 공유 연결을 해제했어요')
+  }
+
+  const handleTeamRole = (role: TeamRole) => {
+    saveTeamRole(role)
+    setTeamRole(role)
+    flash(role === 'caller' ? '이 기기를 콜수행으로 설정했어요' : '이 기기를 뒷차로 설정했어요')
   }
 
   return (
@@ -330,7 +337,7 @@ export function SettingsScreen() {
           </button>
         </div>
         <p className="mt-2 text-xs text-neutral-600">
-          이름에 '중심/외곽'을 넣으면 기피 프리미엄 리포트에 쓰여요.
+          기록 탭에서 자주 쓰는 출발지·도착지 빠른 선택으로 표시됩니다.
         </p>
       </Section>
 
@@ -369,6 +376,32 @@ export function SettingsScreen() {
       </Section>
 
       {/* 5-b. 팀 공유 */}
+      <Section title="이 기기 역할">
+        <div className="flex gap-2">
+          {(
+            [
+              ['caller', '콜수행'],
+              ['follower', '뒷차'],
+            ] as const
+          ).map(([role, label]) => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => handleTeamRole(role)}
+              aria-pressed={teamRole === role}
+              className={`flex-1 rounded-lg py-2.5 text-sm font-semibold ${
+                teamRole === role ? 'bg-emerald-600 text-white' : 'bg-neutral-800 text-neutral-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-neutral-600">
+          역할은 각 기기에서 따로 설정합니다. 콜수행은 작전을 시작·종료하고, 뒷차는 동행·대기 상태를 공유합니다.
+        </p>
+      </Section>
+
       <Section title="2인 1조 팀 공유">
         {!isCloudSyncConfigured ? (
           <div className="flex flex-col gap-2 text-sm text-neutral-400">

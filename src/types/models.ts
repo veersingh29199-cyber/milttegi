@@ -48,6 +48,28 @@ export interface Trip {
   memo?: string
 }
 
+// 2인 1조에서 이 기기가 맡는 고정 역할. 기기별 설정이라 팀에 공유하지 않는다.
+export type TeamRole = 'caller' | 'follower'
+
+// 팀이 현재 처리 중인 콜의 단계. 운행 완료 기록과 분리해 사전·진행 상태를 다룬다.
+export type OperationStage = 'idle' | 'pickup' | 'driving'
+
+// 팀원별 현재 상태. 콜수행과 뒷차가 서로의 진행 상황을 빠르게 확인한다.
+export type CallerStatus = 'ready' | 'pickup' | 'driving'
+export type FollowerStatus = 'ready' | 'following' | 'waiting'
+
+export interface TeamOperation {
+  stage: OperationStage
+  callerStatus: CallerStatus
+  followerStatus: FollowerStatus
+  fromText: string
+  toText: string
+  fare: number
+  platformId: string
+  startedAt: string | null
+  updatedAt: string
+}
+
 // 영업일(오전 6시 경계) 기준 날짜별 경비(유류비 등). 키는 'YYYY-MM-DD'.
 export type DailyExpenses = Record<string, number>
 

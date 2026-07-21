@@ -66,6 +66,12 @@ GEMINI_API_KEY=your-server-only-gemini-api-key
 
 `GEMINI_API_KEY`는 `VITE_` 접두사 없이 넣어야 합니다. 브라우저에 노출되면 안 되는 서버 전용 키입니다.
 
+## 2인 1조 현재 작전
+
+작전판은 완료 운행 통계 대신 현재 처리 중인 콜을 두 기기에서 맞추는 화면입니다. 각 기기에서 설정의 **이 기기 역할**을 `콜수행` 또는 `뒷차`로 정하세요.
+
+팀 공유를 이미 설정했다면, [supabase-team-operations.sql](./supabase-team-operations.sql)을 Supabase SQL Editor에서 한 번 실행하세요. 이 SQL은 팀별 현재 작전 1건과 Realtime 구독을 추가하며, 기존 `shared_trips` 및 저장된 운행 기록은 변경하지 않습니다.
+
 ## 폰 홈 화면에 추가 (앱처럼 사용)
 
 배포된 주소를 폰에서 연 뒤:
