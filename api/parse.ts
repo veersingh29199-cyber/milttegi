@@ -95,7 +95,7 @@ export default async function handler(req: any, res: any) {
       .join('\n')
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
-    const gemRes = await fetch(url, {
+    const requestGemini = (generationConfig: Record<string, unknown>) => fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
@@ -107,15 +107,28 @@ export default async function handler(req: any, res: any) {
             ],
           },
         ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: RESPONSE_SCHEMA,
-        },
+        generationConfig,
       }),
     })
 
+    let gemRes = await requestGemini({
+      responseMimeType: 'application/json',
+      responseSchema: RESPONSE_SCHEMA,
+    })
+    let initialDetail = ''
+
+    // 일부 키/모델 조합은 응답 스키마를 허용하지 않는다. JSON 모드로 한 번 더 시도하면
+    // 화면 인식 자체는 계속할 수 있고, 프롬프트가 동일한 결과 구조를 유지하도록 지시한다.
+    if (!gemRes.ok && gemRes.status === 400) {
+      initialDetail = await gemRes.text()
+      if (/response.?schema|schema/i.test(initialDetail)) {
+        console.warn('Gemini rejected response schema; retrying JSON mode', initialDetail.slice(0, 300))
+        gemRes = await requestGemini({ responseMimeType: 'application/json' })
+      }
+    }
+
     if (!gemRes.ok) {
-      const detail = await gemRes.text()
+      const detail = initialDetail || await gemRes.text()
       // 원본 응답은 Vercel 로그에서만 보고, 사용자에게는 키를 노출하지 않는 원인별 안내를 준다.
       console.error('Gemini parse failed', { status: gemRes.status, detail: detail.slice(0, 500) })
       res.status(502).json({ error: geminiFailure(gemRes.status) })
