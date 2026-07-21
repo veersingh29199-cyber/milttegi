@@ -16,6 +16,7 @@ import { BulkEntryScreen } from './BulkEntryScreen'
 import { DailyTargetBar } from './DailyTargetBar'
 import { RouteFinder } from './RouteFinder'
 import { HistoryImportScreen } from './HistoryImportScreen'
+import { AllTripsScreen } from './AllTripsScreen'
 
 // 기록 탭 메인 화면. 위→아래로 시각·플랫폼·출발·도착·요금·토글, 하단 고정 저장.
 export function RecordScreen() {
@@ -25,6 +26,7 @@ export function RecordScreen() {
   // 몰아입력 모드 여부(기록 탭 안에서 전환).
   const [bulk, setBulk] = useState(false)
   const [historyImport, setHistoryImport] = useState(false)
+  const [allTrips, setAllTrips] = useState(false)
 
   // --- 입력 폼 상태 ---
   const [at, setAt] = useState(nowLocalISO)
@@ -162,6 +164,21 @@ export function RecordScreen() {
     )
   }
 
+  if (allTrips) {
+    return (
+      <AllTripsScreen
+        settings={settings}
+        trips={trips}
+        onClose={() => setAllTrips(false)}
+        onEdit={(trip) => {
+          setAllTrips(false)
+          startEdit(trip)
+        }}
+        onDelete={deleteTrip}
+      />
+    )
+  }
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-5 pb-40">
       <header className="flex items-center justify-between">
@@ -265,12 +282,21 @@ export function RecordScreen() {
       </details>
 
       <section className="mt-2">
-        <h2 className="mb-3 text-base font-bold text-white">
-          오늘 기록{' '}
-          <span className="text-neutral-500">
-            ({todayTrips.length}건 · 전체 {trips.length}건)
-          </span>
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-white">
+            오늘 기록{' '}
+            <span className="text-neutral-500">
+              ({todayTrips.length}건 · 전체 {trips.length}건)
+            </span>
+          </h2>
+          <button
+            type="button"
+            onClick={() => setAllTrips(true)}
+            className="min-h-10 shrink-0 rounded-lg border border-neutral-700 px-3 text-sm font-semibold text-neutral-300 active:bg-neutral-800"
+          >
+            전체 보기
+          </button>
+        </div>
         <TripList
           trips={todayTrips}
           settings={settings}

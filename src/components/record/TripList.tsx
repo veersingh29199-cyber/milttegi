@@ -111,11 +111,13 @@ export function TripList({
   settings,
   onEdit,
   onDelete,
+  ariaLabel = '오늘 운행 기록',
 }: {
   trips: Trip[]
   settings: Settings
   onEdit: (trip: Trip) => void
   onDelete: (id: string) => void
+  ariaLabel?: string
 }) {
   if (trips.length === 0) {
     return <p className="py-6 text-center text-sm text-neutral-600">오늘 기록이 아직 없어요.</p>
@@ -125,7 +127,7 @@ export function TripList({
   const platformOf = (id: string) => settings.platforms.find((p) => p.id === id)
 
   return (
-    <ul className="flex flex-col gap-2" aria-label="오늘 운행 기록">
+    <ul className="flex flex-col gap-2" aria-label={ariaLabel}>
       {trips.map((t) => {
         const platform = platformOf(t.platformId)
         return (

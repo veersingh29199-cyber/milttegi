@@ -45,6 +45,14 @@ const RESPONSE_SCHEMA = {
   required: ['trips'],
 }
 
+function geminiFailure(status: number): string {
+  if (status === 400) return 'Gemini 요청 설정 오류(400)입니다. 모델 또는 요청 형식을 확인하세요.'
+  if (status === 403) return 'Gemini API 키 권한 오류(403)입니다. AI Studio에서 키 상태와 API 제한을 확인하세요.'
+  if (status === 429) return 'Gemini 사용 한도에 도달했어요(429). 잠시 후 다시 시도하세요.'
+  if (status >= 500) return `Gemini 서버가 일시적으로 응답하지 않아요(${status}). 잠시 후 다시 시도하세요.`
+  return `Gemini 인식 요청에 실패했어요(${status}).`
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST만 허용됩니다' })
@@ -108,7 +116,9 @@ export default async function handler(req: any, res: any) {
 
     if (!gemRes.ok) {
       const detail = await gemRes.text()
-      res.status(502).json({ error: `인식 실패(Gemini ${gemRes.status})`, detail: detail.slice(0, 500) })
+      // 원본 응답은 Vercel 로그에서만 보고, 사용자에게는 키를 노출하지 않는 원인별 안내를 준다.
+      console.error('Gemini parse failed', { status: gemRes.status, detail: detail.slice(0, 500) })
+      res.status(502).json({ error: geminiFailure(gemRes.status) })
       return
     }
 
@@ -121,6 +131,7 @@ export default async function handler(req: any, res: any) {
     const parsed = JSON.parse(text)
     res.status(200).json({ trips: Array.isArray(parsed.trips) ? parsed.trips : [] })
   } catch (e: any) {
+    console.error('Gemini parse handler failed', String(e?.message || e).slice(0, 300))
     res.status(500).json({ error: '서버 오류', detail: String(e?.message || e).slice(0, 300) })
   }
 }

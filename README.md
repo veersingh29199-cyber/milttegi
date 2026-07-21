@@ -56,6 +56,16 @@ VITE_SUPABASE_ANON_KEY=your-publishable-or-anon-key
 
 팀 공유를 켜도 각 기기의 `localStorage` 기록은 백업처럼 남습니다.
 
+## 운행내역 사진 불러오기
+
+기록 탭의 **사진 불러오기**는 카카오 상세 내역 1건 또는 T맵 운행 내역 목록을 읽어 확인 후 일괄 저장합니다. 이 기능은 Vercel 서버 함수가 Gemini API를 사용하므로, Vercel 환경변수에 아래 값을 **Production**(미리보기 주소도 쓴다면 Preview 포함)으로 추가한 뒤 재배포해야 합니다.
+
+```bash
+GEMINI_API_KEY=your-server-only-gemini-api-key
+```
+
+`GEMINI_API_KEY`는 `VITE_` 접두사 없이 넣어야 합니다. 브라우저에 노출되면 안 되는 서버 전용 키입니다.
+
 ## 폰 홈 화면에 추가 (앱처럼 사용)
 
 배포된 주소를 폰에서 연 뒤:

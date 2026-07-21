@@ -54,11 +54,16 @@ export async function parseScreenshot(
   const regions = allDistricts().map((d) => ({ code: d.code, name: d.name }))
   const zones = settings.customZones.map((z) => ({ name: z.name, parentCode: z.parentCode }))
 
-  const res = await fetch('/api/parse', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBase64, mediaType: 'image/jpeg', regions, zones, fallbackDate }),
-  })
+  let res: Response
+  try {
+    res = await fetch('/api/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64, mediaType: 'image/jpeg', regions, zones, fallbackDate }),
+    })
+  } catch {
+    throw new Error('사진 인식 서버에 연결하지 못했어요. Vercel 배포 주소와 인터넷 연결을 확인하세요.')
+  }
 
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data?.error || `인식 실패 (${res.status})`)
