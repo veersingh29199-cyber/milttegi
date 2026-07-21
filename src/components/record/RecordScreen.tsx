@@ -15,14 +15,16 @@ import { TripList } from './TripList'
 import { BulkEntryScreen } from './BulkEntryScreen'
 import { DailyTargetBar } from './DailyTargetBar'
 import { RouteFinder } from './RouteFinder'
+import { HistoryImportScreen } from './HistoryImportScreen'
 
 // 기록 탭 메인 화면. 위→아래로 시각·플랫폼·출발·도착·요금·토글, 하단 고정 저장.
 export function RecordScreen() {
   const settings = useSettings()
-  const { trips, addTrip, updateTrip, deleteTrip, saveError, syncError } = useTrips()
+  const { trips, addTrip, addTrips, updateTrip, deleteTrip, saveError, syncError } = useTrips()
 
   // 몰아입력 모드 여부(기록 탭 안에서 전환).
   const [bulk, setBulk] = useState(false)
+  const [historyImport, setHistoryImport] = useState(false)
 
   // --- 입력 폼 상태 ---
   const [at, setAt] = useState(nowLocalISO)
@@ -31,9 +33,12 @@ export function RecordScreen() {
   )
   const [from, setFrom] = useState('')
   const [fromZone, setFromZone] = useState<string | undefined>()
+  const [fromDetail, setFromDetail] = useState<string | undefined>()
   const [to, setTo] = useState('')
   const [toZone, setToZone] = useState<string | undefined>()
+  const [toDetail, setToDetail] = useState<string | undefined>()
   const [fare, setFare] = useState(0)
+  const [paymentMethod, setPaymentMethod] = useState<Trip['paymentMethod']>()
   const [rain, setRain] = useState(false)
   const [event, setEvent] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -68,9 +73,12 @@ export function RecordScreen() {
     setAt(nowLocalISO())
     setFrom('')
     setFromZone(undefined)
+    setFromDetail(undefined)
     setTo('')
     setToZone(undefined)
+    setToDetail(undefined)
     setFare(0)
+    setPaymentMethod(undefined)
     setRain(false)
     setEvent(false)
     setEditingId(null)
@@ -94,7 +102,10 @@ export function RecordScreen() {
       to,
       fromZone,
       toZone,
+      fromDetail,
+      toDetail,
       fare,
+      paymentMethod,
       rain,
       event,
     }
@@ -117,9 +128,12 @@ export function RecordScreen() {
     setPlatformId(trip.platformId)
     setFrom(trip.from)
     setFromZone(trip.fromZone)
+    setFromDetail(trip.fromDetail)
     setTo(trip.to)
     setToZone(trip.toZone)
+    setToDetail(trip.toDetail)
     setFare(trip.fare)
+    setPaymentMethod(trip.paymentMethod)
     setRain(trip.rain)
     setEvent(trip.event)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -137,6 +151,17 @@ export function RecordScreen() {
     )
   }
 
+  if (historyImport) {
+    return (
+      <HistoryImportScreen
+        settings={settings}
+        trips={trips}
+        addTrips={addTrips}
+        onClose={() => setHistoryImport(false)}
+      />
+    )
+  }
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-5 pb-40">
       <header className="flex items-center justify-between">
@@ -144,13 +169,22 @@ export function RecordScreen() {
           <h1 className="text-xl font-bold text-white">새 운행 기록</h1>
           <p className="mt-1 text-sm text-neutral-400">경로와 요금만 먼저 입력하세요</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setBulk(true)}
-          className="min-h-10 rounded-lg border border-neutral-700 px-3 text-sm font-semibold text-neutral-300 active:bg-neutral-800"
-        >
-          몰아입력
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setHistoryImport(true)}
+            className="min-h-10 rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white active:bg-emerald-700"
+          >
+            사진 불러오기
+          </button>
+          <button
+            type="button"
+            onClick={() => setBulk(true)}
+            className="min-h-10 rounded-lg border border-neutral-700 px-3 text-sm font-semibold text-neutral-300 active:bg-neutral-800"
+          >
+            몰아입력
+          </button>
+        </div>
       </header>
 
       {/* 저장 실패 경고: 이게 뜨면 기록이 기기에 남지 않으니 즉시 알아야 한다. */}
@@ -184,6 +218,7 @@ export function RecordScreen() {
             onPick={(code, zoneId) => {
               setFrom(code)
               setFromZone(zoneId)
+              setFromDetail(undefined)
             }}
           />
 
@@ -197,6 +232,7 @@ export function RecordScreen() {
               onPick={(code, zoneId) => {
                 setTo(code)
                 setToZone(zoneId)
+                setToDetail(undefined)
               }}
             />
           </div>

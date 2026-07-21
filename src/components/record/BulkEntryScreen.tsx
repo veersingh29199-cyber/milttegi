@@ -61,7 +61,7 @@ export function BulkEntryScreen({
     setParsing(true)
     setRecognized([])
     try {
-      const trips = await parseScreenshot(file, settings)
+      const trips = await parseScreenshot(file, settings, businessDate)
       setRecognized(trips)
       flash(trips.length ? `${trips.length}건 인식 · 탭해서 확인` : '인식된 운행이 없어요')
     } catch (e) {

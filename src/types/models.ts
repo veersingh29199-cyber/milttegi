@@ -37,7 +37,12 @@ export interface Trip {
   to: string // 도착 시군구 5자리 코드
   fromZone?: string // 내 구역 id (선택)
   toZone?: string // 내 구역 id (선택)
+  // 화면에 보인 원문 위치(동·건물명). 통계는 from/to 시군구 코드로 계산하고,
+  // 목록에서는 이 값을 우선 표시해 운행내역 사진의 정보를 잃지 않는다.
+  fromDetail?: string
+  toDetail?: string
   fare: number // 표시 요금(원)
+  paymentMethod?: 'cash' | 'card'
   rain: boolean
   event: boolean // 행사일(야구 등) 여부
   memo?: string

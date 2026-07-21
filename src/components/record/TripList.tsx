@@ -25,6 +25,8 @@ function TripRow({
   const startX = useRef<number | null>(null)
   const moved = useRef(false)
   const REVEAL = 88 // 삭제 버튼 폭
+  const fromLabel = trip.fromDetail || districtName(trip.from)
+  const toLabel = trip.toDetail || districtName(trip.to)
 
   const onPointerDown = (e: React.PointerEvent) => {
     startX.current = e.clientX
@@ -80,11 +82,13 @@ function TripRow({
           <div className="flex items-center gap-1.5 text-sm text-white">
             <span className="tabular-nums text-neutral-400">{formatHm(trip.at)}</span>
             <span className="truncate">
-              {districtName(trip.from)} → {districtName(trip.to)}
+              {fromLabel} → {toLabel}
             </span>
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 text-xs text-neutral-500">
             <span>{platformName}</span>
+            {trip.paymentMethod === 'cash' && <span>현금</span>}
+            {trip.paymentMethod === 'card' && <span>카드</span>}
             {trip.rain && <span className="text-sky-400">비</span>}
             {trip.event && <span className="text-amber-400">행사</span>}
           </div>

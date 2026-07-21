@@ -21,10 +21,24 @@ const RESPONSE_SCHEMA = {
           toText: { type: 'STRING' },
           toCode: { type: 'STRING' },
           fare: { type: 'INTEGER' },
+          dateISO: { type: 'STRING' },
           timeHHmm: { type: 'STRING' },
+          platformId: { type: 'STRING', enum: ['kakao', 'tmap', ''] },
+          paymentMethod: { type: 'STRING', enum: ['cash', 'card', ''] },
           confidence: { type: 'NUMBER' },
         },
-        required: ['fromText', 'fromCode', 'toText', 'toCode', 'fare', 'timeHHmm', 'confidence'],
+        required: [
+          'fromText',
+          'fromCode',
+          'toText',
+          'toCode',
+          'fare',
+          'dateISO',
+          'timeHHmm',
+          'platformId',
+          'paymentMethod',
+          'confidence',
+        ],
       },
     },
   },
@@ -45,7 +59,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { imageBase64, mediaType, regions, zones } = req.body || {}
+    const { imageBase64, mediaType, regions, zones, fallbackDate } = req.body || {}
     if (!imageBase64) {
       res.status(400).json({ error: '이미지가 없습니다' })
       return
@@ -57,13 +71,16 @@ export default async function handler(req: any, res: any) {
 
     const prompt = [
       '이 이미지는 한국 대리운전 플랫폼의 "운행 내역" 스크린샷이다.',
-      '보이는 각 운행 건에 대해 출발지·도착지·요금·시각을 읽어라.',
+      '카카오 상세 내역은 1건, T맵 운행 내역 목록은 화면에 보이는 모든 행을 읽어라.',
+      '보이는 각 운행 건에 대해 출발지·도착지·요금·날짜·시각·플랫폼·결제수단을 읽어라.',
       '출발지/도착지는 아래 시군구 목록에서 가장 가까운 곳의 5자리 코드로 매핑해라.',
       '동/지번/건물명만 보이면 그 동이 속한 시군구로 매핑한다. 매핑이 불가능하면 코드는 빈 문자열("")로 둔다.',
       `시군구 목록: ${regionList}`,
       zoneList ? `내 구역(참고): ${zoneList}` : '',
+      `날짜가 연도 없이 보이면 기준 날짜 ${fallbackDate || '오늘'}의 연도를 사용해 YYYY-MM-DD로 만든다.`,
       '규칙: fromText/toText=화면에 보인 원문, fromCode/toCode=매핑한 5자리 코드(또는 ""),',
-      'fare=숫자만(원·콤마 제거한 정수), timeHHmm=시각이 보이면 "HH:mm" 아니면 "",',
+      'fare=숫자만(원·콤마 제거한 정수), dateISO=YYYY-MM-DD(모르면 ""), timeHHmm=시각이 보이면 "HH:mm" 아니면 "",',
+      'platformId=카카오면 "kakao", 티맵이면 "tmap", 판단 불가면 "". paymentMethod=현금이면 "cash", 카드면 "card", 없으면 "".',
       'confidence=0~1 확신도. 화면에 분명히 보이는 건만 넣어라. 결과는 JSON.',
     ]
       .filter(Boolean)

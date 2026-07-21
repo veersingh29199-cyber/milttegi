@@ -8,7 +8,10 @@ export interface RecognizedTrip {
   toText: string
   toCode: string
   fare: number
+  dateISO: string
   timeHHmm: string
+  platformId: 'kakao' | 'tmap' | ''
+  paymentMethod: 'cash' | 'card' | ''
   confidence: number
 }
 
@@ -45,6 +48,7 @@ function toResizedBase64(file: File, maxEdge = 1600, quality = 0.72): Promise<st
 export async function parseScreenshot(
   file: File,
   settings: Settings,
+  fallbackDate: string,
 ): Promise<RecognizedTrip[]> {
   const imageBase64 = await toResizedBase64(file)
   const regions = allDistricts().map((d) => ({ code: d.code, name: d.name }))
@@ -53,7 +57,7 @@ export async function parseScreenshot(
   const res = await fetch('/api/parse', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBase64, mediaType: 'image/jpeg', regions, zones }),
+    body: JSON.stringify({ imageBase64, mediaType: 'image/jpeg', regions, zones, fallbackDate }),
   })
 
   const data = await res.json().catch(() => ({}))

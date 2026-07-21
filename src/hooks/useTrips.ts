@@ -94,6 +94,21 @@ export function useTrips() {
     [persist, current],
   )
 
+  // 운행내역 사진처럼 여러 건을 가져올 때는 한 번만 저장·동기화한다.
+  const addTrips = useCallback(
+    (newTrips: Trip[]) => {
+      if (newTrips.length === 0) return
+      persist([...current(), ...newTrips])
+      const teamId = getTeamId()
+      if (teamId) {
+        void upsertCloudTrips(teamId, newTrips).catch(() =>
+          setSyncError('팀 기록에 가져온 운행을 저장하지 못했어요. 로컬에는 저장됐습니다.'),
+        )
+      }
+    },
+    [persist, current],
+  )
+
   const updateTrip = useCallback(
     (t: Trip) => {
       persist(current().map((x) => (x.id === t.id ? t : x)))
@@ -113,5 +128,5 @@ export function useTrips() {
     [persist, current],
   )
 
-  return { trips, addTrip, updateTrip, deleteTrip, saveError, syncError, syncFromCloud }
+  return { trips, addTrip, addTrips, updateTrip, deleteTrip, saveError, syncError, syncFromCloud }
 }
