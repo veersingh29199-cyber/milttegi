@@ -13,7 +13,7 @@ export function PlatformChips({
 }) {
   return (
     <div>
-      <span className="mb-1.5 block text-sm font-medium text-neutral-300">플랫폼</span>
+      <span className="mb-2 block text-sm font-semibold text-neutral-200">플랫폼</span>
       <div className="flex flex-wrap gap-2">
         {platforms.map((p) => {
           const on = p.id === value
@@ -22,10 +22,10 @@ export function PlatformChips({
               key={p.id}
               type="button"
               onClick={() => onChange(p.id)}
-              className={`rounded-full px-4 py-1.5 text-sm ${
+              className={`min-h-10 rounded-lg border px-4 text-sm font-semibold ${
                 on
-                  ? 'bg-emerald-600 text-white'
-                  : 'border border-neutral-700 bg-neutral-800 text-neutral-200'
+                  ? 'border-emerald-500 bg-emerald-600 text-white'
+                  : 'border-neutral-700 bg-neutral-800 text-neutral-200 active:bg-neutral-700'
               }`}
             >
               {p.name}

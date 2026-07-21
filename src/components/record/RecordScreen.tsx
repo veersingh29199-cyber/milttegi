@@ -49,6 +49,13 @@ export function RecordScreen() {
     [trips, today],
   )
   const recentCodes = useMemo(() => recentDistrictCodes(trips), [trips])
+  const quickFares = useMemo(() => {
+    const recent = Array.from(new Set([...trips].sort((a, b) => b.at.localeCompare(a.at)).map((trip) => trip.fare)))
+      .filter((fare) => fare > 0)
+      .slice(0, 4)
+    return recent.length >= 2 ? recent : [10000, 15000, 20000, 25000]
+  }, [trips])
+  const readyToSave = Boolean(from && to && fare > 0)
 
   // 잠깐 뜨는 안내(토스트).
   const flash = (msg: string) => {
@@ -131,17 +138,20 @@ export function RecordScreen() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-4 px-4 pt-4 pb-40">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-white">기록</h1>
+    <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-5 pb-40">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-white">새 운행 기록</h1>
+          <p className="mt-1 text-sm text-neutral-400">경로와 요금만 먼저 입력하세요</p>
+        </div>
         <button
           type="button"
           onClick={() => setBulk(true)}
-          className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
+          className="min-h-10 rounded-lg border border-neutral-700 px-3 text-sm font-semibold text-neutral-300 active:bg-neutral-800"
         >
           몰아입력
         </button>
-      </div>
+      </header>
 
       {/* 저장 실패 경고: 이게 뜨면 기록이 기기에 남지 않으니 즉시 알아야 한다. */}
       {saveError && (
@@ -155,51 +165,71 @@ export function RecordScreen() {
         </p>
       )}
 
-      {/* ① 하루 목표 진행바 · ② 길찾기 */}
+      {/* 목표는 현재 흐름을 방해하지 않게 요약으로만 먼저 보여준다. */}
       <DailyTargetBar trips={trips} settings={settings} />
-      <RouteFinder />
 
-      <TimeField value={at} onChange={setAt} />
+      <section aria-label="운행 입력" className="border-y border-neutral-800 py-5">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-base font-bold text-white">운행 정보</h2>
+          <span className="text-xs font-medium text-neutral-500">필수 3항목</span>
+        </div>
 
-      <PlatformChips platforms={settings.platforms} value={platformId} onChange={setPlatformId} />
+        <div className="flex flex-col gap-5">
+          <RegionField
+            label="출발지"
+            value={from}
+            zoneValue={fromZone}
+            settings={settings}
+            recentCodes={recentCodes}
+            onPick={(code, zoneId) => {
+              setFrom(code)
+              setFromZone(zoneId)
+            }}
+          />
 
-      <RegionField
-        label="출발지"
-        value={from}
-        zoneValue={fromZone}
-        settings={settings}
-        recentCodes={recentCodes}
-        onPick={(code, zoneId) => {
-          setFrom(code)
-          setFromZone(zoneId)
-        }}
-      />
+          <div className="border-l-2 border-emerald-600/70 pl-3">
+            <RegionField
+              label="도착지"
+              value={to}
+              zoneValue={toZone}
+              settings={settings}
+              recentCodes={recentCodes}
+              onPick={(code, zoneId) => {
+                setTo(code)
+                setToZone(zoneId)
+              }}
+            />
+          </div>
 
-      <RegionField
-        label="도착지"
-        value={to}
-        zoneValue={toZone}
-        settings={settings}
-        recentCodes={recentCodes}
-        onPick={(code, zoneId) => {
-          setTo(code)
-          setToZone(zoneId)
-        }}
-      />
+          <div className="border-t border-neutral-800 pt-5">
+            <FareInput
+              value={fare}
+              onChange={setFare}
+              quickValues={quickFares}
+              subtitle={settings.fareIsNet ? '(실수령)' : '(표시요금)'}
+            />
+          </div>
+        </div>
+      </section>
 
-      <FareInput
-        value={fare}
-        onChange={setFare}
-        subtitle={settings.fareIsNet ? '(실수령)' : '(표시요금)'}
-      />
-
-      <div className="flex gap-2">
-        <Toggle label="비" on={rain} onToggle={() => setRain((v) => !v)} />
-        <Toggle label="행사일" on={event} onToggle={() => setEvent((v) => !v)} />
-      </div>
+      <details className="group border-b border-neutral-800 pb-4">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-semibold text-neutral-300">
+          기록 옵션
+          <span className="text-lg text-neutral-500 transition-transform group-open:rotate-90" aria-hidden="true">›</span>
+        </summary>
+        <div className="flex flex-col gap-4 pt-3">
+          <TimeField value={at} onChange={setAt} />
+          <PlatformChips platforms={settings.platforms} value={platformId} onChange={setPlatformId} />
+          <div className="flex gap-2">
+            <Toggle label="비" on={rain} onToggle={() => setRain((v) => !v)} />
+            <Toggle label="행사일" on={event} onToggle={() => setEvent((v) => !v)} />
+          </div>
+          <RouteFinder />
+        </div>
+      </details>
 
       <section className="mt-2">
-        <h2 className="mb-2 text-sm font-semibold text-neutral-300">
+        <h2 className="mb-3 text-base font-bold text-white">
           오늘 기록{' '}
           <span className="text-neutral-500">
             ({todayTrips.length}건 · 전체 {trips.length}건)
@@ -214,7 +244,7 @@ export function RecordScreen() {
       </section>
 
       {/* 하단 고정 저장 바(탭바 위). 한 손 엄지 위치. */}
-      <div className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-10 border-t border-neutral-800 bg-neutral-950/95 p-3 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-10 border-t border-neutral-800 bg-[#0b0f14]/95 p-3 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center gap-2">
           {editingId && (
             <button
@@ -228,9 +258,10 @@ export function RecordScreen() {
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 rounded-xl bg-emerald-600 py-3 text-base font-bold text-white active:bg-emerald-700"
+            disabled={!readyToSave}
+            className="min-h-14 flex-1 rounded-lg bg-emerald-600 px-4 text-base font-bold text-white transition-colors active:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
           >
-            {editingId ? '수정 저장' : '저장'}
+            {editingId ? '수정 저장' : readyToSave ? '기록 저장' : '출발지 · 도착지 · 요금 입력'}
           </button>
         </div>
       </div>

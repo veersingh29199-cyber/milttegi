@@ -12,8 +12,8 @@ export function TimeField({
   const [editing, setEditing] = useState(false)
 
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm font-medium text-neutral-300">종료 시각</span>
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm font-semibold text-neutral-200">종료 시각</span>
       {editing ? (
         <input
           type="datetime-local"
@@ -21,13 +21,13 @@ export function TimeField({
           value={toDatetimeLocalValue(value)}
           onChange={(e) => onChange(fromDatetimeLocalValue(e.target.value))}
           onBlur={() => setEditing(false)}
-          className="rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-1 text-sm text-white"
+          className="min-h-10 rounded-lg border border-neutral-700 bg-neutral-800 px-3 text-sm text-white"
         />
       ) : (
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="rounded-lg bg-neutral-800 px-3 py-1.5 text-sm font-semibold text-white tabular-nums"
+          className="min-h-10 rounded-lg bg-neutral-800 px-3 text-sm font-semibold text-white tabular-nums active:bg-neutral-700"
         >
           {formatMdHm(value)} ✎
         </button>

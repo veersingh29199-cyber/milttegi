@@ -29,59 +29,66 @@ export function RegionField({
       : districtName(value)
     : '미선택'
 
+  const quickPicks = [
+    ...settings.customZones.map((zone) => ({
+      key: `zone-${zone.id}`,
+      label: zone.name,
+      code: zone.parentCode,
+      zoneId: zone.id,
+      active: zoneValue === zone.id,
+    })),
+    ...settings.favorites
+      .filter((code) => !settings.customZones.some((zone) => zone.parentCode === code))
+      .map((code) => ({
+        key: `favorite-${code}`,
+        label: districtName(code),
+        code,
+        zoneId: undefined,
+        active: value === code && !zoneValue,
+      })),
+  ].slice(0, 5)
+
   return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between">
-        <span className="text-sm font-medium text-neutral-300">{label}</span>
-        <span className="text-sm text-emerald-400">{selectedLabel}</span>
+    <div className="min-w-0">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-semibold text-neutral-200">{label}</span>
+        {value && <span className="text-xs font-medium text-emerald-400">선택됨</span>}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {/* 내 구역 칩 */}
-        {settings.customZones.map((z) => {
-          const on = zoneValue === z.id
-          return (
-            <button
-              key={z.id}
-              type="button"
-              onClick={() => onPick(z.parentCode, z.id)}
-              className={`rounded-full px-3 py-1.5 text-sm ${
-                on
-                  ? 'bg-emerald-600 text-white'
-                  : 'border border-emerald-800/60 bg-emerald-950/40 text-emerald-300'
-              }`}
-            >
-              {z.name}
-            </button>
-          )
-        })}
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className={`flex min-h-13 w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors ${
+          value
+            ? 'border-emerald-700/80 bg-emerald-950/35 text-white'
+            : 'border-neutral-700 bg-neutral-900 text-neutral-400'
+        }`}
+      >
+        <span className="text-base font-semibold">{value ? selectedLabel : `${label} 선택`}</span>
+        <span className="text-lg text-neutral-400" aria-hidden="true">›</span>
+      </button>
 
-        {/* 즐겨찾기 칩 */}
-        {settings.favorites.map((code) => {
-          const on = value === code && !zoneValue
-          return (
-            <button
-              key={code}
-              type="button"
-              onClick={() => onPick(code)}
-              className={`rounded-full px-3 py-1.5 text-sm ${
-                on
-                  ? 'bg-emerald-600 text-white'
-                  : 'border border-neutral-700 bg-neutral-800 text-neutral-200'
-              }`}
-            >
-              {districtName(code)}
-            </button>
-          )
-        })}
-
-        {/* 전체 버튼 → 바텀시트 */}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {quickPicks.map((pick) => (
+          <button
+            key={pick.key}
+            type="button"
+            onClick={() => onPick(pick.code, pick.zoneId)}
+            className={`min-h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
+              pick.active
+                ? 'border-emerald-500 bg-emerald-600 text-white'
+                : 'border-neutral-700 bg-neutral-800 text-neutral-200 active:bg-neutral-700'
+            }`}
+          >
+            {pick.label}
+          </button>
+        ))}
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="rounded-full border border-neutral-600 px-3 py-1.5 text-sm text-neutral-300"
+          className="min-h-10 rounded-lg border border-neutral-700 px-3 text-sm font-medium text-neutral-300 active:bg-neutral-800"
         >
-          전체 ▾
+          전체 지역
         </button>
       </div>
 

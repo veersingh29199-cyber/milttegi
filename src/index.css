@@ -22,3 +22,14 @@ body {
   /* 한 손 조작·야간 사용을 위해 탭 하이라이트 깜빡임을 없앤다. */
   -webkit-tap-highlight-color: transparent;
 }
+
+button,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+}
